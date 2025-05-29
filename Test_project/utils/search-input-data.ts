@@ -1,5 +1,3 @@
-import { expect } from "@playwright/test";
-
 export const sanphamSearchData = [
   {
     id: 'TC01',
