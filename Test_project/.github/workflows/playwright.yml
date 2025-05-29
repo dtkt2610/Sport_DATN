@@ -61,10 +61,10 @@ jobs:
   playwright:
     name: Run Playwright Tests
     runs-on: ubuntu-latest
+    needs: [frontend, backend]
     defaults:
       run:
-       working-directory: Test_project
-    needs: [frontend, backend]
+        working-directory: Test_project
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -84,7 +84,7 @@ jobs:
         run: npx playwright test
 
       - name: Upload Playwright Report
-        if: "${{ !cancelled() }}"
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
