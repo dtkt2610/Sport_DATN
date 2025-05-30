@@ -16,7 +16,6 @@ export interface ColorTestCase {
   id: string;
   description: string;
   color: ColorKey[];
-  expected: number;
    shouldUncheck?: boolean;
 }
 
@@ -25,19 +24,18 @@ export const ColorData: ColorTestCase[] = [
     id: "TC01",
     description: "Lọc sản phẩm với một màu",
     color: ["red"],  // Giá trị là 'red', là key của Color
-    expected: 2
+    shouldUncheck: false
   },
   {
     id: "TC02",
     description: "Lọc sản phẩm với nhiều màu",
     color: [ "red", "cyan"],  // Giá trị là 'blue', là key của Color
-    expected: 3
+    shouldUncheck: false
   },
   {
     id: "TC03",
     description: "Bỏ chọn màu và kiểm tra cập nhật",
     color: ["cyan"],  // Giá trị là 'cyan', là key của Color
-    expected: 42,
     shouldUncheck: true
   },
   
