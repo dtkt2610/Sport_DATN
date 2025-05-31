@@ -23,13 +23,7 @@ jobs:
           node-version: lts/*
 
       - name: Install dependencies
-        run: npm ci
-
-      - name: Fix Browserslist warning
-        run: npx update-browserslist-db@latest
-
-      - name: Install missing Babel plugin
-        run: npm install --save-dev @babel/plugin-proposal-private-property-in-object
+        run: npm install --legacy-peer-deps
 
       - name: Run Prettier to format code
         run: npx prettier --write .
