@@ -32,9 +32,6 @@ jobs:
       - name: Build frontend (avoid postcss-calc error)
         run: GENERATE_SOURCEMAP=false npm run build
 
-      - name: Build frontend
-        run: npm run build
-
       - name: Run frontend tests
         run: npm test -- --watchAll=false
   backend:
