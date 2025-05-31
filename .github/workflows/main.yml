@@ -25,15 +25,17 @@ jobs:
       - name: Install dependencies
         run: npm install --legacy-peer-deps --force
 
+      - name: Fix Browserslist warning
+        run: npx update-browserslist-db@latest || true
+
       - name: Run Prettier to format code
         run: npx prettier --write .
-        
-      # ✅ Tạm tắt CSS source map để tránh lỗi postcss-calc
-      - name: Build frontend (avoid postcss-calc error)
-        run: GENERATE_SOURCEMAP=false npm run build
+
+      - name: Build frontend (avoid postcss-calc & CI errors)
+        run: CI='' GENERATE_SOURCEMAP=false npm run build
 
       - name: Run frontend tests
-        run: npm test -- --watchAll=false
+        run: CI='' npm test -- --watchAll=false
   backend:
     name: Build & Test Java Backend
     runs-on: ubuntu-latest
