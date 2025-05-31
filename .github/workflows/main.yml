@@ -23,7 +23,7 @@ jobs:
           node-version: lts/*
 
       - name: Install dependencies
-        run: npm install --legacy-peer-deps
+        run: npm ci
 
       - name: Fix Browserslist warning
         run: npx update-browserslist-db@latest
