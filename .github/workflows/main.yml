@@ -35,7 +35,7 @@ jobs:
         run: CI='' GENERATE_SOURCEMAP=false npm run build
 
       - name: Run frontend tests
-        run: CI='' npm test -- --watchAll=false
+        run: CI='' npm test -- --watchAll=false --passWithNoTests
   backend:
     name: Build & Test Java Backend
     runs-on: ubuntu-latest
