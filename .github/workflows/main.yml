@@ -27,13 +27,6 @@ jobs:
 
       - name: Run Prettier to format code
         run: npx prettier --write .
-         # ✅ Fix Browserslist warning (và tránh thông báo mới)
-      - name: Fix Browserslist warning
-        run: npx update-browserslist-db@latest --no-update-notifier
-
-      # ✅ Tùy chọn: Cài Babel plugin nếu cần
-      - name: Install missing Babel plugin
-        run: npm install --save-dev @babel/plugin-proposal-private-property-in-object
         
       # ✅ Tạm tắt CSS source map để tránh lỗi postcss-calc
       - name: Build frontend (avoid postcss-calc error)
