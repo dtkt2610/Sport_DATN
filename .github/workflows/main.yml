@@ -10,11 +10,12 @@ jobs:
   e2e-localhost:
     name: Run E2E Test (localhost)
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Setup Node + Java
+      # === Setup Node + Java ===
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -25,6 +26,10 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
+
+      # === Install serve globally ===
+      - name: Install serve globally
+        run: npm install -g serve
 
       # === BACKEND ===
       - name: Build Java Backend
@@ -56,9 +61,16 @@ jobs:
         working-directory: Front-end
         run: nohup serve -s build -l 3000 > ../frontend.log 2>&1 &
 
-      # === WAIT ===
+      # === DEBUG BEFORE WAITING ===
+      - name: Curl backend
+        run: curl -I http://localhost:8080 || echo "Backend not up yet"
+
+      - name: Curl frontend
+        run: curl -I http://localhost:3000 || echo "Frontend not up yet"
+
+      # === WAIT FOR SERVICES ===
       - name: Wait for frontend & backend
-        run: npx wait-on http://localhost:3000 http://localhost:8080
+        run: npx wait-on --timeout 120000 http://localhost:3000 http://localhost:8080
 
       # === PLAYWRIGHT TEST ===
       - name: Install test deps
@@ -73,6 +85,16 @@ jobs:
         working-directory: Test_project
         run: npx playwright test
 
+      # === DEBUG LOG IF FAIL ===
+      - name: Print backend log
+        if: failure()
+        run: cat backend.log || echo "No backend log"
+
+      - name: Print frontend log
+        if: failure()
+        run: cat frontend.log || echo "No frontend log"
+
+      # === REPORT ===
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4
