@@ -33,7 +33,7 @@ jobs:
 
       - name: Start Java Backend
         working-directory: Back-end
-        run: nohup mvn spring-boot:run > ../backend.log 2>&1 &
+        run: nohup mvn spring-boot:run -Dspring-boot.run.profiles=ci > ../backend.log 2>&1 &
 
       # === FRONTEND ===
       - name: Install frontend deps
@@ -48,9 +48,13 @@ jobs:
         working-directory: Front-end
         run: npx prettier --write .
 
-      - name: Start Frontend Dev Server
+      - name: Build Frontend
         working-directory: Front-end
-        run: nohup npm start > ../frontend.log 2>&1 &
+        run: CI='' GENERATE_SOURCEMAP=false npm run build
+
+      - name: Start Frontend
+        working-directory: Front-end
+        run: nohup serve -s build -l 3000 > ../frontend.log 2>&1 &
 
       # === WAIT ===
       - name: Wait for frontend & backend
