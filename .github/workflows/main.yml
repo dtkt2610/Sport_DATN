@@ -15,7 +15,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # === Setup Node + Java ===
+      # === SETUP NODE + JAVA ===
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -27,7 +27,6 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      # === Install serve globally ===
       - name: Install serve globally
         run: npm install -g serve
 
@@ -57,16 +56,13 @@ jobs:
         working-directory: Front-end
         run: CI='' GENERATE_SOURCEMAP=false npm run build
 
+      - name: Check frontend build exists
+        working-directory: Front-end
+        run: ls -la build || echo "No build folder"
+
       - name: Start Frontend
         working-directory: Front-end
         run: nohup serve -s build -l 3000 > ../frontend.log 2>&1 &
-
-      # === DEBUG BEFORE WAITING ===
-      - name: Curl backend
-        run: curl -I http://localhost:8080 || echo "Backend not up yet"
-
-      - name: Curl frontend
-        run: curl -I http://localhost:3000 || echo "Frontend not up yet"
 
       # === WAIT FOR SERVICES ===
       - name: Wait for frontend & backend
@@ -85,7 +81,7 @@ jobs:
         working-directory: Test_project
         run: npx playwright test
 
-      # === DEBUG LOG IF FAIL ===
+      # === DEBUG LOGS ON FAIL ===
       - name: Print backend log
         if: failure()
         run: cat backend.log || echo "No backend log"
@@ -94,7 +90,7 @@ jobs:
         if: failure()
         run: cat frontend.log || echo "No frontend log"
 
-      # === REPORT ===
+      # === UPLOAD REPORT ===
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4
