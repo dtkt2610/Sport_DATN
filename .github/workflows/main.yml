@@ -72,7 +72,7 @@ jobs:
 
       # === WAIT FOR SERVICES TO BE READY ===
       - name: Wait for frontend & backend
-        run: npx wait-on --timeout 180000 --verbose http://localhost:3000 http://localhost:8080
+        run: npx wait-on --http-get --timeout 300000 --verbose http://localhost:3000 http://localhost:8080
 
       # === DEBUG LOG IF SERVICES FAIL ===
       - name: Print backend log (after wait-on)
