@@ -39,6 +39,11 @@ jobs:
         working-directory: Back-end
         run: nohup mvn spring-boot:run -Dspring-boot.run.profiles=ci > ../backend.log 2>&1 &
 
+      - name: Check if port 8080 is in use
+        run: |
+          sleep 5
+          lsof -i :8080 || echo "Nothing is listening on port 8080 yet"
+
       # === FRONTEND ===
       - name: Install frontend deps
         working-directory: Front-end
@@ -66,7 +71,11 @@ jobs:
 
       # === WAIT FOR SERVICES ===
       - name: Wait for frontend & backend
-        run: npx wait-on --timeout 120000 http://localhost:3000 http://localhost:8080
+        run: npx wait-on --timeout 180000 --verbose http://localhost:3000 http://localhost:8080
+
+      - name: Print backend log (after wait-on)
+        if: failure()
+        run: cat backend.log || echo "No backend log available"
 
       # === PLAYWRIGHT TEST ===
       - name: Install test deps

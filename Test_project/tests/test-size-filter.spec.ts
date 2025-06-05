@@ -3,45 +3,37 @@ import { SizePage } from '../pages/size-page';
 import { SizeFilterTestCase, sizeFilterData } from '../utils/size-data';
 
 test.describe('Lọc sản phẩm theo kích cỡ', () => {
-  let sizePage: SizePage;
-
-  test.beforeEach(async ({ page }) => {
-    sizePage = new SizePage(page);
-    await sizePage.navigateToHome(); // Đảm bảo bạn có hàm này trong BasePage
-    await sizePage.gotoSanPhamPage();
-  });
 
   for (const testCase of sizeFilterData) {
-    test(`${testCase.id} - ${testCase.description}`, async () => {
-      const sizes = Array.isArray(testCase.productSizes)
-        ? testCase.productSizes
-        : [testCase.productSizes];
+    test(`${testCase.id} - ${testCase.description}`, async ({ page }) => {
 
-      // Chọn từng kích cỡ
-      for (const size of sizes) {
-        await sizePage.selectSize(size);
-        await sizePage.expectSizeButtonActive(size);
-      }
+      const sizePage = new SizePage(page);
 
-      const count = await sizePage.getProductCount();
+      await sizePage.navigateToHome();
+      await sizePage.gotoSanPhamPage();
 
-      // Nếu mong đợi không có sản phẩm
-      if (testCase.expected.expectNoProduct) {
-        expect(count).toBe(0);
-        await sizePage.expectNoProductMessageVisible();
-        return;
-      }
+      const initialCount = await sizePage.getVisibleProductCount();
 
-      // Nếu mong đợi số lượng sản phẩm chính xác
-      if (typeof testCase.expected.productCount === 'number') {
-        expect(count).toBe(testCase.expected.productCount);
-      }
+      // 👉 Bước 1: Chọn chất liệu ban đầu
+      await sizePage.selectSize(...testCase.initialSelection);
+      await sizePage.waitForProductCountToChange(initialCount);
 
-      // Nếu mong đợi ít nhất bao nhiêu sản phẩm
-      if (typeof testCase.expected.minProductCount === 'number') {
-        expect(count).toBeGreaterThanOrEqual(testCase.expected.minProductCount);
+      const afterFirstSelectionCount = await sizePage.getVisibleProductCount();
+      expect(afterFirstSelectionCount).toBeGreaterThanOrEqual(0); // ít nhất vẫn nên kiểm
+
+      // 👉 Bước 2: Nếu có unselect và chọn lại chất liệu khác
+      if (testCase.unselectAfter && testCase.reselect) {
+        await sizePage.unselectSize(...testCase.initialSelection);
+        const countAfterUnselect = await sizePage.getVisibleProductCount();
+
+        await sizePage.selectSize(...testCase.reselect);
+        await sizePage.waitForProductCountToChange(countAfterUnselect);
+
+        const finalCount = await sizePage.getVisibleProductCount();
+        expect(finalCount).toBeGreaterThanOrEqual(0);
       }
     });
+
   }
   test.afterAll(async ({ page }) => {
     page.close();

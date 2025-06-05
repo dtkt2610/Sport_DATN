@@ -268,6 +268,9 @@ function ContentSanPham() {
     }
   };
 
+  console.log("s", totalPages);
+
+
   return (
     <div style={{ paddingTop: 30 }} className="container">
       <div className="row">
@@ -419,34 +422,41 @@ function ContentSanPham() {
           {/* Phần sản phẩm */}
           <div className="row">
             <h3 style={{ textAlign: 'center' }}>Sản Phẩm</h3>
-            {filteredData.map((d, i) => (
-              <div key={i} className="col-md-4">
-                <Card onClick={() => handleDetail(d.id, d.sanPham.id, d.mauSac.id)} style={{ width: '260px', height: '400px' }}>
-                  <Card.Img
-                    style={{ textAlign: 'center', width: '260px', height: '300px' }}
-                    src={`http://localhost:8080/api/chi-tiet-san-pham/${d.id}`}
-                  />
-                  <Card.Body>
-                    <Card.Title>{d.sanPham.ten}</Card.Title>
-                    <Card.Text>
-                      <span>{convertToCurrency(d.giaBan)}</span>
-                    </Card.Text>
-                  </Card.Body>
-                </Card>
-              </div>
-            ))}
+            {
+              filteredData?.length > 0 ?
+                filteredData.map((d, i) => (
+                  <div key={i} className="col-md-4">
+                    <Card onClick={() => handleDetail(d.id, d.sanPham.id, d.mauSac.id)} style={{ width: '260px', height: '400px' }}>
+                      <Card.Img
+                        style={{ textAlign: 'center', width: '260px', height: '300px' }}
+                        src={`http://localhost:8080/api/chi-tiet-san-pham/${d.id}`}
+                      />
+                      <Card.Body>
+                        <Card.Title>{d.sanPham.ten}</Card.Title>
+                        <Card.Text>
+                          <span>{convertToCurrency(d.giaBan)}</span>
+                        </Card.Text>
+                      </Card.Body>
+                    </Card>
+                  </div>
+                )) : <div className='text-error' style={{ textAlign: 'center', paddingTop: '50px', fontSize: '20px', color: 'red' }}>
+                  Không có sản phẩm nào phù hợp
+                </div>
+            }
           </div>
-          <div className="pagination-container">
-            <Pagination
-              count={totalPages}
-              onChange={(event, page) => handlePageClick({ selected: page - 1 })}
-              variant="text"
-              color="primary"
-              showFirstButton
-              showLastButton
-              className="d-flex justify-content-center"
-            />
-          </div>
+          {
+            filteredData.length > 0 && <div className="pagination-container">
+              <Pagination
+                count={totalPages}
+                onChange={(event, page) => handlePageClick({ selected: page - 1 })}
+                variant="text"
+                color="primary"
+                showFirstButton
+                showLastButton
+                className="d-flex justify-content-center"
+              />
+            </div>
+          }
         </div>
       </div>
     </div>

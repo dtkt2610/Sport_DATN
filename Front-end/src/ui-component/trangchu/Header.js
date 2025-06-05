@@ -92,7 +92,7 @@ function Header() {
     <div className="header-content-container">
       <header className="header">
         <nav className="navbar navbar-expand-lg nav-1">
-          <div style={{ paddingRight: '120px' }}>
+          <div style={{ paddingRight: '20px' }}>
             <a className="navbar-brand nameShop" href="/trang-chu">
               Sports Shop
             </a>
@@ -131,7 +131,7 @@ function Header() {
               </li>
             </ul>
           </div>
-          <div style={{ paddingLeft: '100px' }}>
+          <div style={{ paddingLeft: '20px' }}>
             <ul className="navbar-nav">
               <li className="nav-item">
                 <a className="nav-link active" aria-current="page" href="#">

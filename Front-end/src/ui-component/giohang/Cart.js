@@ -343,6 +343,9 @@ function Cart(props) {
                   ))}
                 </Table>
               </div>
+              {
+                listSP.length === 0 && <div className='text-error' style={{ textAlign: 'center', paddingBottom: '5px', fontSize: '18px', color: 'red', fontStyle: 'italic' }}>Không có sản phẩm nào trong giỏ hàng</div>
+              }
             </div>
           </div>
           <div className="col-md-4">

@@ -6,39 +6,38 @@ export class ColorsPage extends BasePage {
   productItems = ".card";
   colorInput = "input.round-checkbox";
 
+  
+
   constructor(page: Page) {
     super(page);
   }
-  async gotoSanPhamPage() {
+  async gotoSanPhamPage(): Promise<void>  {
     await this.page.waitForSelector(this.clickSanphamPage, { state: "visible", timeout: 10000 });
     await this.page.click(this.clickSanphamPage);
   }
   getColorInputByRGB = (rgb: string) => `form.color-code[style*="${rgb}"] >> xpath=preceding-sibling::input`;
+  
   async selectColorByRGB(rgb: string) {
     const checkbox = this.page.locator(this.getColorInputByRGB(rgb));
-    await checkbox.check({ force: true });
-    await expect(checkbox).toBeChecked();
-    await this.page.waitForTimeout(1000);
+    if (!(await checkbox.count())) {
+      throw new Error(`Checkbox cho màu ${rgb} không tìm thấy!`);
+    }
+    if (!(await checkbox.isChecked())) {
+      await checkbox.check({ force: true });
+      await expect(checkbox).toBeChecked();
+    }
   }
   async unselectColorByRGB(rgb: string) {
     const checkbox = this.page.locator(this.getColorInputByRGB(rgb));
-    await checkbox.uncheck({ force: true });
-    await expect(checkbox).not.toBeChecked();
-    await this.page.waitForTimeout(3500);
+    if (!(await checkbox.count())) {
+      throw new Error(`Checkbox cho màu ${rgb} không tìm thấy!`);
+    }
+    if (await checkbox.isChecked()) {
+      await checkbox.uncheck({ force: true });
+      await expect(checkbox).not.toBeChecked();
+    }
   }
 
-  async countProduct() {
-    return await this.page.locator(this.productItems).count();
-  }
-  /*async waitForProductCountToChange(previousCount: number) {
-    await this.page.waitForFunction(
-      ({ selector, prevCount }) => {
-        const currentCount = document.querySelectorAll(selector).length;
-        return currentCount !== prevCount;
-      },
-      { selector: this.productItems, prevCount: previousCount }
-    );
-  }*/
   async waitForProductCountToChange(previousCount: number, timeout = 10000) {
     const startTime = Date.now();
 
@@ -55,5 +54,20 @@ export class ColorsPage extends BasePage {
       await this.page.waitForTimeout(200); // Poll mỗi 200ms
     }
     throw new Error(`❌ Timeout: Product count did not change after ${timeout}ms`);
+  }
+
+  // 👉 Lấy số lượng sản phẩm đang hiển thị
+  async getVisibleProductCount(): Promise<number> {
+    return this.page.locator(this.productItems)
+      .filter({ hasNot: this.page.locator('[style*="display: none"]') })
+      .count();
+  }
+
+  // 👉 Đảm bảo không có sản phẩm nào đang hiển thị
+  async expectNoProductsVisible(): Promise<void> {
+    await expect(
+      this.page.locator(this.productItems)
+        .filter({ hasNot: this.page.locator('[style*="display: none"]') })
+    ).toHaveCount(0);
   }
 }

@@ -275,6 +275,8 @@ function Detail(props) {
   };
 
   const addSPToGH = async (id, value) => {
+    console.log("value", value);
+
     try {
       const res = await themGioHang(id, value);
       if (res) {
@@ -305,6 +307,19 @@ function Detail(props) {
       toast.error('Sản phẩm đã hết hàng !');
       return;
     }
+
+    console.log("product.sanPham.selectedIdMSSP", valuesAddGH);
+
+    if (!selectedIdMSSP) {
+      toast.error('Vui lòng chọn màu sắc');
+      return;
+    }
+    if (valuesAddGH?.chiTietSanPham.id === '') {
+      toast.error('Vui lòng chọn kích cỡ');
+      return;
+    }
+
+
     if (!dataLogin) {
       localStorage.setItem('checkedLogin', true);
       navigate('/login');
