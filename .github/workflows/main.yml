@@ -12,6 +12,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # === CHECKOUT SOURCE ===
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -35,7 +36,7 @@ jobs:
         working-directory: Back-end
         run: mvn clean install
 
-      - name: Start Java Backend
+      - name: Start Java Backend with profile 'ci'
         working-directory: Back-end
         run: nohup mvn spring-boot:run -Dspring-boot.run.profiles=ci > ../backend.log 2>&1 &
 
@@ -69,10 +70,11 @@ jobs:
         working-directory: Front-end
         run: nohup serve -s build -l 3000 > ../frontend.log 2>&1 &
 
-      # === WAIT FOR SERVICES ===
+      # === WAIT FOR SERVICES TO BE READY ===
       - name: Wait for frontend & backend
         run: npx wait-on --timeout 180000 --verbose http://localhost:3000 http://localhost:8080
 
+      # === DEBUG LOG IF SERVICES FAIL ===
       - name: Print backend log (after wait-on)
         if: failure()
         run: cat backend.log || echo "No backend log available"
