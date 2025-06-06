@@ -31,21 +31,22 @@ jobs:
       - name: Install serve globally
         run: npm install -g serve
 
-        # === CLEAR MAVEN CACHE ===
+      # === CLEAR MAVEN CACHE ===
       - name: Clear Maven cache to avoid missing JARs
         run: rm -rf ~/.m2/repository
 
       # === BACKEND ===
       - name: Build Java Backend
         working-directory: Back-end
-        run: mvn clean install -Pci
+        run: mvn clean install
 
-
-
-      - name: Start Java Backend with profile 'ci'
+      - name: Start Java Backend with profile 'ci' and devtools disabled
         working-directory: Back-end
-        run: nohup mvn spring-boot:run -Pci -Dspring-boot.run.profiles=ci > ../backend.log 2>&1 &
-
+        env:
+          SPRING_DEVTOOLS_RESTART_ENABLED: false
+          SPRING_DEVTOOLS_LIVERELOAD_ENABLED: false
+        run: |
+          nohup mvn spring-boot:run -Dspring-boot.run.profiles=ci > ../backend.log 2>&1 &
 
       - name: Check if port 8080 is in use
         run: |
