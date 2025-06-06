@@ -142,9 +142,7 @@
             </plugin>
         </plugins>
     </build>
-
-        <profiles>
-    <profile>
+<profile>
         <id>ci</id>
         <activation>
             <property>
@@ -153,7 +151,7 @@
             </property>
         </activation>
         <dependencies>
-            <!-- Gỡ tác dụng devtools trong CI -->
+            <!-- Gỡ bỏ hoàn toàn tác dụng của devtools trong CI -->
             <dependency>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-devtools</artifactId>
@@ -168,7 +166,6 @@
             </dependency>
         </dependencies>
     </profile>
-</profiles>
 
 
 </project>
