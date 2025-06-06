@@ -41,9 +41,11 @@ jobs:
         run: mvn clean install -Pci
 
 
+
       - name: Start Java Backend with profile 'ci'
         working-directory: Back-end
-        run: nohup mvn spring-boot:run -Dspring-boot.run.profiles=ci > ../backend.log 2>&1 &
+        run: nohup mvn spring-boot:run -Pci -Dspring-boot.run.profiles=ci > ../backend.log 2>&1 &
+
 
       - name: Check if port 8080 is in use
         run: |
