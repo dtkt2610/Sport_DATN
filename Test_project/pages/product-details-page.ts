@@ -23,10 +23,34 @@ export class ProductDetailPage extends BasePage {
         await this.page.waitForSelector(this.clickSanphamPage, { state: "visible", timeout: 10000 });
         await this.page.click(this.clickSanphamPage);
     }
+
     async clickProductByName(productName: string) {
-        const productTitleLocator = this.page.locator(`.card-title.h5:has-text("${productName}")`);
-        await productTitleLocator.first().click();
+        const normalize = (text: string) => text.replace(/\s+/g, ' ').trim().toLowerCase();
+
+        const cards = this.page.locator('.card');
+        const count = await cards.count();
+
+        for (let i = 0; i < count; i++) {
+            const card = cards.nth(i);
+            const titleLocator = card.locator('.card-title.h5');
+            const title = (await titleLocator.innerText()).trim();
+
+            console.log(`🔍 So sánh: UI title = "${title}" vs productName = "${productName}"`);
+
+            if (normalize(title) === normalize(productName)) {
+                try {
+                    await titleLocator.click();
+                    return;
+                } catch {
+                    await card.click();
+                    return;
+                }
+            }
+        }
+
+        throw new Error(`❌ Không tìm thấy sản phẩm với tên chính xác: "${productName}"`);
     }
+
 
     async selectColorByName(colorName: string) {
         const rgbValue = colorMap[colorName];

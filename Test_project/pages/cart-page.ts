@@ -13,6 +13,9 @@ export class CartPage extends BasePage {
     proceedToCheckoutBtn = 'button.btn.btn-success';
     alertError = '.Toastify__toast--error';
     emptyCartMessage = 'div.text-error:has-text("Không có sản phẩm nào trong giỏ hàng")';
+    input = 'input.form-control';
+    plusBtn = '#input-spinner-right-button';
+    minusBtn = '#input-spinner-left-button';
 
     constructor(page: Page) {
         super(page);
@@ -21,34 +24,30 @@ export class CartPage extends BasePage {
     async gotoCartPage(): Promise<void> {
         await this.page.goto(this.cartUrl);
     }
-
     async findRowBy({ productName, size, colorRgb }: { productName: string, size: string, colorRgb: string }) {
         const rows = this.page.locator(this.tableRow);
         const count = await rows.count();
 
         for (let i = 0; i < count; i++) {
             const row = rows.nth(i);
-
             const cellText = await row.locator(this.productTextCell).innerText();
-            const [nameLine, sizeColorLine] = cellText.split("\n").map(t => t.trim());
+            const normalizedText = cellText.replace(/\s+/g, " ").toLowerCase();
 
-            const sizeFromCell = sizeColorLine.split("-")[0].trim();
+            const hasName = normalizedText.includes(productName.toLowerCase());
+            const hasSize = normalizedText.includes(size.toLowerCase());
 
-            const colorStyle = await row.locator(this.colorSpan).evaluate(el =>
-                getComputedStyle(el).backgroundColor
-            );
+            const colorLocator = row.locator(this.colorSpan);
+            let colorStyle = "";
+            try {
+                await colorLocator.waitFor({ state: "visible", timeout: 3000 });
+                colorStyle = await colorLocator.evaluate(el => getComputedStyle(el).backgroundColor);
+            } catch {
+                continue;
+            }
 
-            // Debug log (xóa khi chạy thực tế)
-            console.log("[DEBUG] Tìm sản phẩm:", {
-                nameLine, sizeFromCell, colorStyle,
-                expected: { productName, size, colorRgb }
-            });
-
-            const matchName = nameLine === productName;
-            const matchSize = sizeFromCell === size;
             const matchColor = colorStyle.replace(/\s+/g, "") === colorRgb.replace(/\s+/g, "");
 
-            if (matchName && matchSize && matchColor) {
+            if (hasName && hasSize && matchColor) {
                 return row;
             }
         }
@@ -56,17 +55,41 @@ export class CartPage extends BasePage {
         throw new Error(`Không tìm thấy sản phẩm: ${productName}, size: ${size}, màu: ${colorRgb}`);
     }
 
-    async expectItemInCart(params: { productName: string, size: string, colorRgb: string, quantity: number }) {
-        await this.gotoCartPage();
+    async updateQuantity(params: {
+        productName: string;
+        size: string;
+        colorRgb: string;
+        quantity: number;
+    }) {
         const row = await this.findRowBy(params);
-        const qty = await row.locator(this.quantityInput).inputValue();
-        expect(Number(qty)).toBe(params.quantity);
-    }
+        const inputLocator = row.locator('input.form-control');
+        const plusBtn = row.locator('#input-spinner-right-button');
+        const minusBtn = row.locator('#input-spinner-left-button');
 
-    async updateQuantity(params: { productName: string, size: string, colorRgb: string, quantity: number }) {
-        const row = await this.findRowBy(params);
-        await row.locator(this.quantityInput).fill(params.quantity.toString());
-        await this.page.waitForTimeout(500);
+        // DEBUG: log HTML của dòng sản phẩm
+        console.log("👉 Row HTML:", await row.innerHTML());
+
+        // Lấy số lượng hiện tại
+        let currentQty = parseInt(await inputLocator.inputValue(), 10);
+        const targetQty = params.quantity;
+        const diff = targetQty - currentQty;
+
+        if (diff === 0) return;
+
+        const btn = diff > 0 ? plusBtn : minusBtn;
+        const steps = Math.abs(diff);
+
+        for (let i = 0; i < steps; i++) {
+            await btn.click();
+            await inputLocator.dispatchEvent('input');
+            await inputLocator.dispatchEvent('change');
+            await this.page.waitForTimeout(300);
+        }
+
+        // ✅ Kiểm tra cuối cùng
+        const finalQty = parseInt(await inputLocator.inputValue(), 10);
+        console.log(`🔍 Kỳ vọng: ${targetQty}, Thực tế: ${finalQty}`);
+        expect(finalQty).toBe(targetQty);
     }
 
     async deleteItem(params: { productName: string, size: string, colorRgb: string }) {
@@ -96,4 +119,17 @@ export class CartPage extends BasePage {
         const alert = this.page.locator(this.alertError);
         await expect(alert).toContainText(message);
     }
+    async expectItemInCart(params: {
+        productName: string;
+        size: string;
+        colorRgb: string;
+        quantity: number;
+    }) {
+        const row = await this.findRowBy(params);
+        const qtyInput = row.locator(this.quantityInput);
+        const qty = await qtyInput.inputValue();
+
+        expect(Number(qty)).toBe(params.quantity);
+    }
+
 }
