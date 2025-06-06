@@ -142,7 +142,8 @@
             </plugin>
         </plugins>
     </build>
-<profile>
+<profiles>
+   <profile>
         <id>ci</id>
         <activation>
             <property>
@@ -165,7 +166,8 @@
                 </exclusions>
             </dependency>
         </dependencies>
-    </profile>
+      <profile>
+    </profiles>
 
 
 </project>
