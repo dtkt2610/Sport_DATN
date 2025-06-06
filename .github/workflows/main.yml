@@ -38,7 +38,8 @@ jobs:
       # === BACKEND ===
       - name: Build Java Backend
         working-directory: Back-end
-        run: mvn clean install
+        run: mvn clean install -Pci
+
 
       - name: Start Java Backend with profile 'ci'
         working-directory: Back-end
