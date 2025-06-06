@@ -109,11 +109,21 @@ jobs:
         if: failure()
         run: cat frontend.log || echo "No frontend log"
 
-      # === UPLOAD REPORT ===
-      - name: Upload Playwright report
+     # === UPLOAD PLAYWRIGHT ARTIFACTS ===
+      - name: Upload Playwright HTML report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
-          path: Test_project/playwright-report/
+          path: Test_project/test-reports/
           retention-days: 30
+          if-no-files-found: warn
+
+      - name: Upload Playwright trace (on failure)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-trace
+          path: Test_project/test-results/
+          retention-days: 15
+          if-no-files-found: warn
