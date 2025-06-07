@@ -1,4 +1,4 @@
-name: Full CI - Localhost Test with Playwright
+name: Full CI with SQL Server and Playwright
 
 on:
   push:
@@ -7,9 +7,23 @@ on:
     branches: [main]
 
 jobs:
-  e2e-localhost:
-    name: Run E2E Test (localhost)
+  e2e-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2019-latest
+        env:
+          SA_PASSWORD: "YourStrong!Passw0rd"
+          ACCEPT_EULA: "Y"
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P YourStrong!Passw0rd -Q 'SELECT 1'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
 
     steps:
       - name: Checkout code
@@ -29,63 +43,54 @@ jobs:
       - name: Install serve globally
         run: npm install -g serve
 
-      - name: Clear Maven cache
-        run: rm -rf ~/.m2/repository
+      - name: Wait for SQL Server ready
+        run: |
+          for i in {1..20}; do
+            /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "YourStrong!Passw0rd" -Q "SELECT 1" && break
+            echo "Waiting for SQL Server..."
+            sleep 5
+          done
 
-      - name: Build Java Backend
+      - name: Create DB and import DATN.sql
+        run: |
+          /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "YourStrong!Passw0rd" -Q "CREATE DATABASE TestDB"
+          /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "YourStrong!Passw0rd" -d TestDB -i Back-end/src/main/resources/DATN.sql
+
+      - name: Build Backend
         working-directory: Back-end
         run: mvn clean install
 
-      - name: Start Java Backend with profile 'ci'
+      - name: Start Backend
         working-directory: Back-end
         env:
-          SPRING_DEVTOOLS_RESTART_ENABLED: false
-          SPRING_DEVTOOLS_LIVERELOAD_ENABLED: false
+          SPRING_PROFILES_ACTIVE: ci
         run: |
           nohup mvn spring-boot:run -Dspring-boot.run.profiles=ci > ../backend.log 2>&1 &
 
-      - name: Print backend log (after 10s delay)
+      - name: Print backend log (after 10s)
         run: |
           sleep 10
-          cat backend.log || echo "No backend log yet"
+          cat backend.log || echo "No backend log"
 
       - name: Install frontend deps
         working-directory: Front-end
         run: npm install --legacy-peer-deps --force
 
-      - name: Fix Browserslist warning
-        working-directory: Front-end
-        run: npx update-browserslist-db@latest || true
-
-      - name: Format frontend with Prettier
-        working-directory: Front-end
-        run: npx prettier --write .
-
-      - name: Build Frontend
+      - name: Build frontend
         working-directory: Front-end
         run: CI='' GENERATE_SOURCEMAP=false npm run build
 
-      - name: Check frontend build exists
-        working-directory: Front-end
-        run: ls -la build || echo "No build folder"
-
-      - name: Start Frontend
+      - name: Start frontend
         working-directory: Front-end
         run: nohup serve -s build -l 3000 > ../frontend.log 2>&1 &
 
-      # === WAIT FOR SERVICES WITH TIMEOUT ===
-      - name: Wait for frontend (max 3 minutes)
+      - name: Wait for frontend
         run: npx wait-on http://localhost:3000 --timeout 180000
 
-      - name: Wait for backend (max 5 minutes)
+      - name: Wait for backend port
         run: npx wait-on tcp:8080 --timeout 300000
 
-      - name: Print backend log (if wait-on fails)
-        if: failure()
-        run: cat backend.log || echo "No backend log available"
-
-      # === PLAYWRIGHT TESTS ===
-      - name: Install test deps
+      - name: Install Playwright test deps
         working-directory: Test_project
         run: npm ci
 
@@ -97,16 +102,14 @@ jobs:
         working-directory: Test_project
         run: npx playwright test
 
-      # === DEBUG LOGS ON FAILURE ===
-      - name: Print backend log
+      - name: Print backend log (on fail)
         if: failure()
         run: cat backend.log || echo "No backend log"
 
-      - name: Print frontend log
+      - name: Print frontend log (on fail)
         if: failure()
         run: cat frontend.log || echo "No frontend log"
 
-      # === PLAYWRIGHT REPORTS ===
       - name: Upload Playwright HTML report
         if: always()
         uses: actions/upload-artifact@v4
