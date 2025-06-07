@@ -15,12 +15,12 @@ jobs:
       sqlserver:
         image: mcr.microsoft.com/mssql/server:2019-latest
         env:
-          SA_PASSWORD: "YourStrong!Passw0rd"
+          SA_PASSWORD: "Kimtho@123"
           ACCEPT_EULA: "Y"
         ports:
           - 1433:1433
         options: >-
-          --health-cmd "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P YourStrong!Passw0rd -Q 'SELECT 1'"
+          --health-cmd "sqlcmd -S localhost -U sa -P Kimtho@123 -Q 'SELECT 1'"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 10
@@ -43,17 +43,26 @@ jobs:
       - name: Install serve globally
         run: npm install -g serve
 
+      - name: Install sqlcmd
+        run: |
+          curl -sSL https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
+          sudo add-apt-repository "$(wget -qO- https://packages.microsoft.com/config/ubuntu/20.04/prod.list)"
+          sudo apt-get update
+          sudo ACCEPT_EULA=Y apt-get install -y mssql-tools unixodbc-dev
+          echo 'export PATH="$PATH:/opt/mssql-tools/bin"' >> ~/.bashrc
+          source ~/.bashrc
+
       - name: Wait for SQL Server ready
         run: |
           for i in {1..20}; do
-            /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "YourStrong!Passw0rd" -Q "SELECT 1" && break
+            sqlcmd -S localhost -U sa -P "Kimtho@123" -Q "SELECT 1" && break
             echo "Waiting for SQL Server..."
             sleep 5
           done
 
       - name: Create database and import DATN.sql
         run: |
-          /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "YourStrong!Passw0rd" -d Sports -i DATN.sql
+          sqlcmd -S localhost -U sa -P "Kimtho@123" -d Sports -i DATN.sql
 
       - name: Build Backend
         working-directory: Back-end
