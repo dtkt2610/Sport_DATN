@@ -9,8 +9,6 @@ on:
 jobs:
   e2e-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-
     services:
       sqlserver:
         image: mcr.microsoft.com/mssql/server:2019-latest
