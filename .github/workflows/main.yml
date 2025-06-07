@@ -10,6 +10,7 @@ jobs:
   e2e-localhost:
     name: Run E2E Test (localhost)
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -28,14 +29,14 @@ jobs:
       - name: Install serve globally
         run: npm install -g serve
 
-      - name: Clear Maven cache to avoid missing JARs
+      - name: Clear Maven cache
         run: rm -rf ~/.m2/repository
 
       - name: Build Java Backend
         working-directory: Back-end
         run: mvn clean install
 
-      - name: Start Java Backend with profile 'ci' and devtools disabled
+      - name: Start Java Backend with profile 'ci'
         working-directory: Back-end
         env:
           SPRING_DEVTOOLS_RESTART_ENABLED: false
@@ -43,10 +44,10 @@ jobs:
         run: |
           nohup mvn spring-boot:run -Dspring-boot.run.profiles=ci > ../backend.log 2>&1 &
 
-      - name: Check if port 8080 is in use
+      - name: Print backend log (after 10s delay)
         run: |
-          sleep 5
-          lsof -i :8080 || echo "Nothing is listening on port 8080 yet"
+          sleep 10
+          cat backend.log || echo "No backend log yet"
 
       - name: Install frontend deps
         working-directory: Front-end
@@ -72,15 +73,18 @@ jobs:
         working-directory: Front-end
         run: nohup serve -s build -l 3000 > ../frontend.log 2>&1 &
 
-      - name: Wait for frontend
-        run: npx wait-on --http-get --timeout 300000 
-      - name: Wait for backend
-        run: npx wait-on tcp:8080
+      # === WAIT FOR SERVICES WITH TIMEOUT ===
+      - name: Wait for frontend (max 3 minutes)
+        run: npx wait-on http://localhost:3000 --timeout 180000
 
-      - name: Print backend log (after wait-on)
+      - name: Wait for backend (max 5 minutes)
+        run: npx wait-on tcp:8080 --timeout 300000
+
+      - name: Print backend log (if wait-on fails)
         if: failure()
         run: cat backend.log || echo "No backend log available"
 
+      # === PLAYWRIGHT TESTS ===
       - name: Install test deps
         working-directory: Test_project
         run: npm ci
@@ -93,6 +97,7 @@ jobs:
         working-directory: Test_project
         run: npx playwright test
 
+      # === DEBUG LOGS ON FAILURE ===
       - name: Print backend log
         if: failure()
         run: cat backend.log || echo "No backend log"
@@ -101,6 +106,7 @@ jobs:
         if: failure()
         run: cat frontend.log || echo "No frontend log"
 
+      # === PLAYWRIGHT REPORTS ===
       - name: Upload Playwright HTML report
         if: always()
         uses: actions/upload-artifact@v4
