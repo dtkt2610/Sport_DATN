@@ -10,18 +10,6 @@ jobs:
   e2e-localhost:
     name: Run E2E Test (localhost)
     runs-on: ubuntu-latest
-    services:
-      sqlserver:
-        image: mcr.microsoft.com/mssql/server:2019-latest
-        env:
-          SA_PASSWORD: "YourStrong!Passw0rd"
-          ACCEPT_EULA: "Y"
-        ports:
-          - 1433:1433
-        options: >-
-          --health-cmd "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P YourStrong!Passw0rd -Q 'SELECT 1'"
-          --health-interval 10s --health-timeout 5s --health-retries 5
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -39,18 +27,6 @@ jobs:
 
       - name: Install serve globally
         run: npm install -g serve
-
-      - name: Wait for SQL Server to be ready
-        run: |
-          for i in {1..20}; do
-            /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "YourStrong!Passw0rd" -Q "SELECT 1" && break
-            echo "Waiting for SQL Server..."
-            sleep 5
-          done
-
-      - name: Import SQL script
-        run: |
-          /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "YourStrong!Passw0rd" -d master -i Back-end/DATN.sql
 
       - name: Clear Maven cache to avoid missing JARs
         run: rm -rf ~/.m2/repository
