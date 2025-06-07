@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: sqlserver
+    environment:
+      SA_PASSWORD: "YourStrong!Pass123"
+      ACCEPT_EULA: "Y"
+    ports:
+      - "1433:1433"
+    volumes:
+      - ./DATN.sql:/DATN.sql
+    healthcheck:
+      test: ["CMD-SHELL", "sqlcmd -U sa -P YourStrong!Pass123 -Q 'SELECT 1'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  sqlimporter:
+    image: mcr.microsoft.com/mssql-tools
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    volumes:
+      - ./DATN.sql:/DATN.sql
+    entrypoint: >
+      bash -c "
+      echo 'Waiting to import DATN.sql...' &&
+      sleep 10 &&
+      /opt/mssql-tools/bin/sqlcmd -S sqlserver -U sa -P YourStrong!Pass123 -i /DATN.sql
+      "
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      sqlimporter:
+        condition: service_completed_successfully
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:sqlserver://sqlserver:1433;databaseName=Sports
+      SPRING_DATASOURCE_USERNAME: sa
+      SPRING_DATASOURCE_PASSWORD: YourStrong!Pass123
+    ports:
+      - "8080:8080"
