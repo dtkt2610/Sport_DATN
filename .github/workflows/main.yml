@@ -72,8 +72,10 @@ jobs:
         working-directory: Front-end
         run: nohup serve -s build -l 3000 > ../frontend.log 2>&1 &
 
-      - name: Wait for frontend & backend
-        run: npx wait-on --http-get --timeout 300000 --verbose http://localhost:3000 http://localhost:8080
+      - name: Wait for frontend
+        run: npx wait-on --http-get --timeout 300000 
+      - name: Wait for backend
+        run: npx wait-on tcp:8080
 
       - name: Print backend log (after wait-on)
         if: failure()
