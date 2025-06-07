@@ -8,17 +8,8 @@ on:
 
 jobs:
   e2e-test:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-
-    services:
-      sqlserver:
-        image: mcr.microsoft.com/mssql/server:2019-latest
-        env:
-          SA_PASSWORD: "Kimtho@123"
-          ACCEPT_EULA: "Y"
-        ports:
-          - 1433:1433
+    runs-on: windows-latest
+    timeout-minutes: 25
 
     steps:
       - name: Checkout code
@@ -38,25 +29,29 @@ jobs:
       - name: Install serve globally
         run: npm install -g serve
 
-      - name: Install sqlcmd tools
+      - name: Start SQL Server (Windows built-in)
         run: |
-          curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
-          sudo apt-add-repository "$(wget -qO- https://packages.microsoft.com/config/ubuntu/20.04/prod.list)"
-          sudo apt-get update
-          sudo ACCEPT_EULA=Y apt-get install -y mssql-tools unixodbc-dev
-          echo 'export PATH="$PATH:/opt/mssql-tools/bin"' >> $GITHUB_ENV
+          Start-Service MSSQLSERVER
+          sqlcmd -S localhost -U sa -P "Kimtho@123" -Q "SELECT @@VERSION"
+        shell: powershell
 
       - name: Wait for SQL Server ready
         run: |
-          for i in {1..20}; do
-            sqlcmd -S localhost -U sa -P "Kimtho@123" -Q "SELECT 1" && break
-            echo "Waiting for SQL Server..."
-            sleep 5
-          done
+          for ($i = 0; $i -lt 20; $i++) {
+            try {
+              sqlcmd -S localhost -U sa -P "Kimtho@123" -Q "SELECT 1"
+              break
+            } catch {
+              echo "Waiting for SQL Server..."
+              Start-Sleep -Seconds 5
+            }
+          }
+        shell: powershell
 
       - name: Create database and import DATN.sql
         run: |
           sqlcmd -S localhost -U sa -P "Kimtho@123" -d Sports -i DATN.sql
+        shell: powershell
 
       - name: Build Backend
         working-directory: Back-end
@@ -67,12 +62,14 @@ jobs:
         env:
           SPRING_PROFILES_ACTIVE: ci
         run: |
-          nohup mvn spring-boot:run -Dspring-boot.run.profiles=ci > ../backend.log 2>&1 &
+          Start-Process -NoNewWindow -FilePath "mvn" -ArgumentList "spring-boot:run -Dspring-boot.run.profiles=ci" -RedirectStandardOutput ../backend.log -RedirectStandardError ../backend.log
+        shell: powershell
 
       - name: Print backend log (after 10s)
         run: |
-          sleep 10
-          cat backend.log || echo "No backend log"
+          Start-Sleep -Seconds 10
+          Get-Content backend.log -Raw
+        shell: powershell
 
       - name: Install frontend dependencies
         working-directory: Front-end
@@ -84,7 +81,9 @@ jobs:
 
       - name: Start frontend
         working-directory: Front-end
-        run: nohup serve -s build -l 3000 > ../frontend.log 2>&1 &
+        run: |
+          Start-Process -NoNewWindow -FilePath "serve" -ArgumentList "-s build -l 3000" -RedirectStandardOutput ../frontend.log -RedirectStandardError ../frontend.log
+        shell: powershell
 
       - name: Wait for frontend
         run: npx wait-on http://localhost:3000 --timeout 180000
@@ -106,11 +105,13 @@ jobs:
 
       - name: Print backend log on failure
         if: failure()
-        run: cat backend.log || echo "No backend log"
+        run: Get-Content backend.log -Raw
+        shell: powershell
 
       - name: Print frontend log on failure
         if: failure()
-        run: cat frontend.log || echo "No frontend log"
+        run: Get-Content frontend.log -Raw
+        shell: powershell
 
       - name: Upload Playwright HTML report
         if: always()
