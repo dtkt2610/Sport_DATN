@@ -5,14 +5,14 @@ services:
     image: mcr.microsoft.com/mssql/server:2022-latest
     container_name: sqlserver
     environment:
-      SA_PASSWORD: "YourStrong!Pass123"
+      SA_PASSWORD: "Kimtho@123"
       ACCEPT_EULA: "Y"
     ports:
       - "1433:1433"
     volumes:
       - ./DATN.sql:/DATN.sql
     healthcheck:
-      test: ["CMD-SHELL", "sqlcmd -U sa -P YourStrong!Pass123 -Q 'SELECT 1'"]
+      test: ["CMD-SHELL", "sqlcmd -U sa -P Kimtho@123 -Q 'SELECT 1'"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -28,7 +28,7 @@ services:
       bash -c "
       echo 'Waiting to import DATN.sql...' &&
       sleep 10 &&
-      /opt/mssql-tools/bin/sqlcmd -S sqlserver -U sa -P YourStrong!Pass123 -i /DATN.sql
+      /opt/mssql-tools/bin/sqlcmd -S sqlserver -U sa -P Kimtho@123 -i /DATN.sql
       "
 
   backend:
@@ -41,6 +41,6 @@ services:
     environment:
       SPRING_DATASOURCE_URL: jdbc:sqlserver://sqlserver:1433;databaseName=Sports
       SPRING_DATASOURCE_USERNAME: sa
-      SPRING_DATASOURCE_PASSWORD: YourStrong!Pass123
+      SPRING_DATASOURCE_PASSWORD: Kimtho@123
     ports:
       - "8080:8080"
