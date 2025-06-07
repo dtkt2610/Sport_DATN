@@ -54,6 +54,7 @@ jobs:
           done
       - name: Create database and import DATN.sql
         run: |
+          sqlcmd -S localhost -U sa -P "Kimtho@123" -Q "CREATE DATABASE Sports"
           sqlcmd -S localhost -U sa -P "Kimtho@123" -d Sports -i DATN.sql
       - name: Build Backend
         working-directory: Back-end
