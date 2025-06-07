@@ -21,12 +21,11 @@ jobs:
         options: >-
           --health-cmd "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P YourStrong!Passw0rd -Q 'SELECT 1'"
           --health-interval 10s --health-timeout 5s --health-retries 5
+
     steps:
-      # === CHECKOUT SOURCE ===
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # === SETUP NODE + JAVA ===
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -40,6 +39,7 @@ jobs:
 
       - name: Install serve globally
         run: npm install -g serve
+
       - name: Wait for SQL Server to be ready
         run: |
           for i in {1..20}; do
@@ -47,14 +47,14 @@ jobs:
             echo "Waiting for SQL Server..."
             sleep 5
           done
-          - name: Import SQL script
-            run: |
-              /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "YourStrong!Passw0rd" -d master -i ./DATN.sql
-      # === CLEAR MAVEN CACHE ===
+
+      - name: Import SQL script
+        run: |
+          /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "YourStrong!Passw0rd" -d master -i Back-end/DATN.sql
+
       - name: Clear Maven cache to avoid missing JARs
         run: rm -rf ~/.m2/repository
 
-      # === BACKEND ===
       - name: Build Java Backend
         working-directory: Back-end
         run: mvn clean install
@@ -72,7 +72,6 @@ jobs:
           sleep 5
           lsof -i :8080 || echo "Nothing is listening on port 8080 yet"
 
-      # === FRONTEND ===
       - name: Install frontend deps
         working-directory: Front-end
         run: npm install --legacy-peer-deps --force
@@ -97,16 +96,13 @@ jobs:
         working-directory: Front-end
         run: nohup serve -s build -l 3000 > ../frontend.log 2>&1 &
 
-      # === WAIT FOR SERVICES TO BE READY ===
       - name: Wait for frontend & backend
         run: npx wait-on --http-get --timeout 300000 --verbose http://localhost:3000 http://localhost:8080/api/chatlieu/getAll
 
-      # === DEBUG LOG IF SERVICES FAIL ===
       - name: Print backend log (after wait-on)
         if: failure()
         run: cat backend.log || echo "No backend log available"
 
-      # === PLAYWRIGHT TEST ===
       - name: Install test deps
         working-directory: Test_project
         run: npm ci
@@ -119,7 +115,6 @@ jobs:
         working-directory: Test_project
         run: npx playwright test
 
-      # === DEBUG LOGS ON FAIL ===
       - name: Print backend log
         if: failure()
         run: cat backend.log || echo "No backend log"
@@ -128,7 +123,6 @@ jobs:
         if: failure()
         run: cat frontend.log || echo "No frontend log"
 
-     # === UPLOAD PLAYWRIGHT ARTIFACTS ===
       - name: Upload Playwright HTML report
         if: always()
         uses: actions/upload-artifact@v4
