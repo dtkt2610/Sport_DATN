@@ -48,8 +48,8 @@ jobs:
             sleep 5
           done
           - name: Import SQL script
-        run: |
-          /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "YourStrong!Passw0rd" -d master -i ./DATN.sql
+            run: |
+              /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "YourStrong!Passw0rd" -d master -i ./DATN.sql
       # === CLEAR MAVEN CACHE ===
       - name: Clear Maven cache to avoid missing JARs
         run: rm -rf ~/.m2/repository
