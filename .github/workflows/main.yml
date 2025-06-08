@@ -57,7 +57,10 @@ jobs:
           sqlcmd -S localhost -U sa -P "Kimtho@123" -d Sports -i SQL/CREATE_TABLE.sql
           sqlcmd -S localhost -U sa -P "Kimtho@123" -d Sports -i SQL/DATN.sql
           sqlcmd -S localhost -U sa -P "Kimtho@123" -d Sports -i SQL/CONTRAINT.sql
-        
+      - name: ✅ Check sample data after import
+        run: |
+          echo "Số lượng tài khoản Users:"
+          sqlcmd -S localhost -U sa -P "Kimtho@123" -d Sports -Q "SELECT COUNT(*) AS ChatLieuCount FROM ChatLieu"
 
       - name: Cache Maven packages
         uses: actions/cache@v4
