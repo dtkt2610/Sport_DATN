@@ -1,5 +1,3 @@
-CREATE DATABASE Sports;
-GO
 USE [Sports]
 GO
 SET ANSI_NULLS ON
