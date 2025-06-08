@@ -53,9 +53,9 @@ jobs:
 
       - name: Create database and import SQL scripts
         run: |
-          sqlcmd -S localhost -U sa -P "Kimtho@123" -d Sports -i sql/CREATE_TABLE.sql
-          sqlcmd -S localhost -U sa -P "Kimtho@123" -d Sports -i sql/INSERT_DATA.sql
-          sqlcmd -S localhost -U sa -P "Kimtho@123" -d Sports -i sql/CONSTRAINT.sql
+          sqlcmd -S localhost -U sa -P "Kimtho@123" -d Sports -i SQL/CREATE_TABLE.sql
+          sqlcmd -S localhost -U sa -P "Kimtho@123" -d Sports -i SQL/INSERT_DATA.sql
+          sqlcmd -S localhost -U sa -P "Kimtho@123" -d Sports -i SQL/CONSTRAINT.sql
         
 
       - name: Cache Maven packages
