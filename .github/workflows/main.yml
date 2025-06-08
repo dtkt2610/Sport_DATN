@@ -55,7 +55,7 @@ jobs:
         run: |
           sqlcmd -S localhost -U sa -P "Kimtho@123" -Q "CREATE DATABASE Sports"
           sqlcmd -S localhost -U sa -P "Kimtho@123" -d Sports -i SQL/CREATE_TABLE.sql
-          sqlcmd -S localhost -U sa -P "Kimtho@123" -d Sports -i SQL/INSERT_DATA.sql
+          sqlcmd -S localhost -U sa -P "Kimtho@123" -d Sports -i SQL/DATN.sql
           sqlcmd -S localhost -U sa -P "Kimtho@123" -d Sports -i SQL/CONSTRAINT.sql
         
 
