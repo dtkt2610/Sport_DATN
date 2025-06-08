@@ -9,13 +9,13 @@ services:
       ACCEPT_EULA: "Y"
     ports:
       - "1433:1433"
-    volumes:
-      - ./DATN.sql:/DATN.sql
     healthcheck:
       test: ["CMD-SHELL", "sqlcmd -U sa -P Kimtho@123 -Q 'SELECT 1'"]
       interval: 10s
       timeout: 5s
       retries: 10
+    volumes:
+      - ./sql:/sql  # Thư mục chứa 3 file SQL
 
   sqlimporter:
     image: mcr.microsoft.com/mssql-tools
@@ -23,12 +23,18 @@ services:
       sqlserver:
         condition: service_healthy
     volumes:
-      - ./DATN.sql:/DATN.sql
+      - ./sql:/sql
     entrypoint: >
       bash -c "
-      echo 'Waiting to import DATN.sql...' &&
+      echo '⏳ Đang đợi SQL Server sẵn sàng...' &&
       sleep 10 &&
-      /opt/mssql-tools/bin/sqlcmd -S sqlserver -U sa -P Kimtho@123 -i /DATN.sql
+      echo '🚀 Đang tạo bảng...' &&
+      /opt/mssql-tools/bin/sqlcmd -S sqlserver -U sa -P Kimtho@123 -i /sql/CREATE_TABLE.sql &&
+      echo '📦 Đang chèn dữ liệu...' &&
+      /opt/mssql-tools/bin/sqlcmd -S sqlserver -U sa -P Kimtho@123 -i /sql/DATN.sql
+      echo '🔐 Đang thêm ràng buộc...' &&
+      /opt/mssql-tools/bin/sqlcmd -S sqlserver -U sa -P Kimtho@123 -i /sql/CONTRAINT.sql &&
+      
       "
 
   backend:

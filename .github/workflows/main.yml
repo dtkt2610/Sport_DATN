@@ -1,5 +1,4 @@
 name: Full CI with SQL Server and Playwright
-
 on:
   push:
     branches: [main]
@@ -43,6 +42,7 @@ jobs:
           sudo apt-get update
           sudo ACCEPT_EULA=Y apt-get install -y mssql-tools unixodbc-dev
           echo "/opt/mssql-tools/bin" >> $GITHUB_PATH
+
       - name: Wait for SQL Server ready
         run: |
           for i in {1..20}; do
@@ -50,10 +50,22 @@ jobs:
             echo "Waiting for SQL Server..."
             sleep 5
           done
-      - name: Create database and import DATN.sql
+
+      - name: Create database and import SQL scripts
         run: |
-          sqlcmd -S localhost -U sa -P "Kimtho@123" -Q "CREATE DATABASE Sports"
-          sqlcmd -S localhost -U sa -P "Kimtho@123" -d Sports -i DATN.sql
+          sqlcmd -S localhost -U sa -P "Kimtho@123" -d Sports -i sql/CREATE_TABLE.sql
+          sqlcmd -S localhost -U sa -P "Kimtho@123" -d Sports -i sql/INSERT_DATA.sql
+          sqlcmd -S localhost -U sa -P "Kimtho@123" -d Sports -i sql/CONSTRAINT.sql
+        
+
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
       - name: Build Backend
         working-directory: Back-end
         run: mvn clean install
@@ -64,10 +76,12 @@ jobs:
           SPRING_PROFILES_ACTIVE: ci
         run: |
           nohup mvn spring-boot:run -Dspring-boot.run.profiles=ci > ../backend.log 2>&1 &
+
       - name: Print backend log (after 10s)
         run: |
           sleep 10
           cat backend.log || echo "No backend log"
+
       - name: Install frontend dependencies
         working-directory: Front-end
         run: npm install --legacy-peer-deps --force
