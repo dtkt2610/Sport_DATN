@@ -35,7 +35,4 @@ test.describe('Lọc sản phẩm theo kích cỡ', () => {
     });
 
   }
-  test.afterAll(async ({ page }) => {
-    page.close();
-  });
 });

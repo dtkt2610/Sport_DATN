@@ -12,30 +12,30 @@ export interface PriceRangeTestCase {
 }
 export const priceRangeData: PriceRangeTestCase[] = [
   {
-    id: 'TC01',
+    id: 'PRICE01',
     description: 'Lọc sản phẩm trong khoảng giá hợp lệ',
-    ranges:[{min: 901865, max: 1550000}]
-    
+    ranges: [{ min: 901865, max: 1550000 }]
+
   },
   {
-    id: 'TC02',
+    id: 'PRICE02',
     description: 'Lọc sản phẩm trong khoảng giá không có sản phẩm',
-    ranges:[{min: 0, max: 165448}],
+    ranges: [{ min: 0, max: 165448 }],
     expectEmpty: true
   },
   {
-    id: 'TC03',
+    id: 'PRICE03',
     description: 'Cập nhật sản phẩm khi thay đổi khoảng giá',
     ranges: [{ min: 0, max: 165448 },
-       { min: 901865, max: 1550000 },]
+    { min: 901865, max: 1550000 },]
   },
   {
-    id: 'TC04',
+    id: 'PRICE04',
     description: 'Lọc sản phẩm khi min bằng max',
     ranges: [{ min: 1550000, max: 1550000 }]
   },
   {
-    id: 'TC05',
+    id: 'PRICE05',
     description: 'Lọc sản phẩm khi max = min',
     ranges: [{ min: 0, max: 0 }]
   },

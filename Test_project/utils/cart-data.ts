@@ -31,12 +31,12 @@ export interface CartTestCase {
 
 export const CartTestData: CartTestCase[] = [
     {
-        id: "TC01",
+        id: "C01",
         description: "Kiểm tra xem danh sách sản phẩm trong giỏ hàng khi không có sản phẩm",
         expectText: "Không có sản phẩm nào trong giỏ hàng"
     },
     {
-        id: "TC02",
+        id: "C02",
         description: "Kiểm tra xem danh sách sản phẩm trong giỏ hàng",
         initialCartItems: [
             { productName: "Áo khoác chạy bộ Fast & Free", colorRgb: "black", size: "M", quantity: 2 },
@@ -48,7 +48,7 @@ export const CartTestData: CartTestCase[] = [
         ]
     },
     {
-        id: "TC03",
+        id: "C03",
         description: "Kiểm tra thay đổi số lượng sản phẩm trong giỏ hàng",
         actions: [
             {
@@ -64,7 +64,7 @@ export const CartTestData: CartTestCase[] = [
         ]
     },
     {
-        id: "TC04",
+        id: "C04",
         description: "Kiểm tra xóa sản phẩm khỏi giỏ hàng",
         actions: [
             {
@@ -79,7 +79,7 @@ export const CartTestData: CartTestCase[] = [
         ]
     },
     {
-        id: "TC05",
+        id: "C05",
         description: "Kiểm tra chọn sản phẩm để thanh toán",
         checkoutSelection: [
             { productName: "Áo thun Nam Cotton Mỹ hình in logo TS225M0", colorRgb: "red", size: "M" }
@@ -98,7 +98,7 @@ export const CartTestData: CartTestCase[] = [
         expectText: "/checkout"
     },
     {
-        id: "TC06",
+        id: "C06",
         description: "Kiểm tra không chọn sản phẩm nào để thanh toán",
         actions: [
             {
@@ -109,7 +109,7 @@ export const CartTestData: CartTestCase[] = [
         expectText: "Vui lòng chọn sản phẩm trước khi thanh toán"
     },
     {
-        id: "TC07",
+        id: "C07",
         description: "Kiểm tra chọn sản phẩm để thanh toán vượt quá 50 triệu đồng",
         initialCartItems: [
             { productName: "Áo thun Nam Cotton Mỹ hình in logo TS225M0", colorRgb: "red", size: "M", quantity: 1 }

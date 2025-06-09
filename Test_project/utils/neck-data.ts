@@ -9,17 +9,17 @@ export interface NeckFilterTestCase {
 
 export const NeckData: NeckFilterTestCase[] = [
   {
-    id: "TC01",
+    id: "NF01",
     description: "Lọc sản phẩm với một loại cổ áo",
     initialSelection: ["Cổ Có Mũ"],
   },
   {
-    id: "TC02",
+    id: "NF02",
     description: "Lọc sản phẩm với nhiều loại cổ áo",
     initialSelection: ["Cổ Tròn", "Cổ Có Mũ"],
   },
   {
-    id: "TC03",
+    id: "NF03",
     description: "Chọn lại loại cổ áo khác",
     initialSelection: ["Cổ Có Mũ"],
     unselectAfter: true,    // Có bỏ chọn sau đó chọn lại không

@@ -13,7 +13,7 @@ export interface AddToCartTestCase {
 
 export const AddToCartData: AddToCartTestCase[] = [
   {
-    id: "TC01",
+    id: "ATC01",
     description: "Thêm vào giỏ hàng khi chưa đăng nhập",
     productName: "Áo Hoodie Thể Thao Tay Ngắn Có Nón Form Regular",
     colorRgb: "black",
@@ -22,7 +22,7 @@ export const AddToCartData: AddToCartTestCase[] = [
     expectRedirectToLogin: true
   },
   {
-    id: "TC02",
+    id: "ATC02",
     description: "Thêm vào giỏ hàng khi chưa chọn màu",
     productName: "Áo Hoodie Thể Thao Tay Ngắn Có Nón Form Regular",
     colorRgb: "",
@@ -31,7 +31,7 @@ export const AddToCartData: AddToCartTestCase[] = [
     expectedPopupMessage: "Vui lòng chọn màu sắc !"
   },
   {
-    id: "TC03",
+    id: "ATC03",
     description: "Thêm vào giỏ hàng khi chưa chọn kích cỡ",
     productName: "Áo Hoodie Thể Thao Tay Ngắn Có Nón Form Regular",
     colorRgb: "black",
@@ -40,7 +40,7 @@ export const AddToCartData: AddToCartTestCase[] = [
     expectedPopupMessage: "Vui lòng chọn kích cỡ !"
   },
   {
-    id: "TC04",
+    id: "ATC04",
     description: "Thêm sản phẩm vào giỏ hàng khi đã chọn đủ thuộc tính",
     productName: "Áo Hoodie Thể Thao Tay Ngắn Có Nón Form Regular",
     colorRgb: "black",
@@ -49,7 +49,7 @@ export const AddToCartData: AddToCartTestCase[] = [
     expectedPopupMessage: "Thành công"
   },
   {
-    id: "TC05",
+    id: "ATC05",
     description: "Thêm sản phẩm vào giỏ hàng khi chưa chọn thuộc tính",
     productName: "Áo Hoodie Thể Thao Tay Ngắn Có Nón Form Regular",
     colorRgb: "",
