@@ -24,7 +24,7 @@ import { remove } from '../../utils/removeItem';
 import { Pagination } from '@mui/material';
 
 const MIN = 0;
-const MAX = 10000000;
+const MAX = 1500000;
 
 function ContentSanPham() {
   const [data, setData] = useState([]);
@@ -123,7 +123,7 @@ function ContentSanPham() {
 
   const [filterCretia, setFilterCretia] = useState({
     giaBanMin: 0,
-    giaBanMax: 10000000,
+    giaBanMax: 1500000,
     listChatLieu: [],
     listSize: [],
     listMau: [],
@@ -133,9 +133,9 @@ function ContentSanPham() {
   });
 
   // Hàm xử lý khi khoảng giá thay đổi
-  const handlePriceRangeChange = (newValues) => {
-    setPriceRange(newValues);
-    setDisplayedPriceRange(newValues); // Cập nhật displayedPriceRange
+  const handlePriceRangeChange = (priceRange) => {
+    setPriceRange(priceRange);
+    setDisplayedPriceRange(priceRange); // Cập nhật displayedPriceRange
     setFilterCretia({ ...filterCretia, giaBanMin: priceRange[0], giaBanMax: priceRange[1] });
   };
 
@@ -212,13 +212,14 @@ function ContentSanPham() {
   };
 
   function convertToCurrency(number) {
-    const formatter = new Intl.NumberFormat('vi-VN', {
+    const rounded = Math.ceil(number / 5000) * 5000;
+    return new Intl.NumberFormat('vi-VN', {
       style: 'currency',
-      currency: 'VND'
-    });
-
-    return formatter.format(number);
+      currency: 'VND',
+      minimumFractionDigits: 0
+    }).format(rounded);
   }
+
 
   const navigate = useNavigate();
 
@@ -305,7 +306,8 @@ function ContentSanPham() {
                       <strong>Khoảng giá:</strong>{' '}
                       {convertToCurrency(displayedPriceRange[0]) + ' - ' + convertToCurrency(displayedPriceRange[1])}
                     </div>
-                    <Slider className="slider" onChange={handlePriceRangeChange} value={priceRange} min={MIN} max={maxPrice}></Slider>
+                    <Slider className="slider" onChange={handlePriceRangeChange} value={priceRange} min={MIN} max={maxPrice} step={5000}            // để khớp logic lọc và test
+                      minDistance={0} pearling={true}></Slider>
                   </div>
                 </Accordion.Body>
               </Accordion.Item>

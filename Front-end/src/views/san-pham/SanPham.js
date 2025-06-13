@@ -20,7 +20,7 @@ import { getAllListCL, getAllListCO, getAllListLSP, getAllListMS, getAllListNSX 
 import { Avatar } from '@mui/material';
 
 const MIN = 0;
-const MAX = 1000000;
+const MAX = 1550000;
 function SanPham() {
   const [values, setValues] = useState([MIN, 0]);
 
