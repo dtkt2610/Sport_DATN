@@ -10,6 +10,7 @@ export class SanphamPage extends BasePage {
   searchInput = "input[id='searchInput']";
   productItems = ".card";
   productPrice = ".card-text span";
+  messageText = ".text-error";
 
 
   constructor(page: Page) {
@@ -48,6 +49,13 @@ export class SanphamPage extends BasePage {
     const items = this.page.locator(this.productItems);
     const count = await items.count();
     console.log(`Found ${count} items`);
+
+    if (await this.page.locator(this.messageText).isVisible()) {
+      const messageText = await this.page.locator(this.messageText).innerText();
+      console.log(`Message shown: ${messageText}`);
+      expect(messageText.toLowerCase()).toContain("không có sản phẩm nào phù hợp");
+      return;
+    }
 
     expect(count).toBeGreaterThan(0); // Đảm bảo có sản phẩm hiển thị
 

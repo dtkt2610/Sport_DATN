@@ -21,7 +21,7 @@ export const sanphamSearchData = [
     id: 'SEARCH04',
     description: 'Tìm kiếm với từ khóa không phù hợp',
     keyword: 'Xe máy',
-    expect: 'Không có sản phẩm nào phù hợp'
+    expected: 'Không có sản phẩm nào phù hợp'
   },
   {
     id: 'SEARCH05',

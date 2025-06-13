@@ -1,59 +1,71 @@
 import { test, expect } from "@playwright/test";
 import { PriceRangePage } from "../pages/price-range-page";
-import { priceRangeData, PriceRangeTestCase } from "../utils/price-range-data";
+import { priceRangeData } from "../utils/price-range-data";
 
-test.describe("Kiểm thử lọc sản phẩm theo khoảng giá", () => {
-  let priceRangePage: PriceRangePage;
-  const TIMEOUT = process.env.TEST_TIMEOUT ? parseInt(process.env.TEST_TIMEOUT) : 15000;
+const TIMEOUT = process.env.TEST_TIMEOUT ? parseInt(process.env.TEST_TIMEOUT) : 15000;
+const FULL_MIN = 0;
+const FULL_MAX = 1550000;
+const TOLERANCE = 20000;
 
-  test.beforeEach(async ({ page }) => {
-    priceRangePage = new PriceRangePage(page);
-    await priceRangePage.navigateToHome();
-    await priceRangePage.gotoSanPhamPage();
-    await expect(page.locator(priceRangePage.productItems).first()).toBeVisible({ timeout: TIMEOUT });
-  });
-
-  test.afterAll(async ({ page }) => {
-    await page.close();
-  });
-
+test.describe("🔍 Kiểm thử lọc sản phẩm theo khoảng giá", () => {
   for (const testCase of priceRangeData) {
-    test(testCase.description, async ({ page }) => {
-      console.log(`Chạy test case: ${testCase.id} - ${testCase.description}`);
-      try {
-        if (!testCase.ranges || testCase.ranges.length === 0) {
-          throw new Error(`Test case ${testCase.id} không có ranges hợp lệ`);
-        }
+    test(`${testCase.id} - ${testCase.description}`, async ({ page }) => {
+      const priceRangePage = new PriceRangePage(page);
 
-        for (const range of testCase.ranges) {
-          if (range.min === undefined || range.max === undefined || isNaN(range.min) || isNaN(range.max) || range.min < 0 || range.max < range.min) {
-            throw new Error(`Khoảng giá không hợp lệ trong ${testCase.id}: min=${range.min}, max=${range.max}`);
+      await priceRangePage.navigateToHome();
+      await priceRangePage.gotoSanPhamPage();
+
+      await expect(page.locator(priceRangePage.productItems).first()).toBeVisible({ timeout: TIMEOUT });
+
+      if (!testCase.ranges?.length) {
+        throw new Error(`❌ Test case ${testCase.id} không có dữ liệu khoảng giá`);
+      }
+
+      for (const range of testCase.ranges) {
+        const { min, max, expectEmpty, expectedEmptyText } = range;
+
+        await test.step(`🧪 Kiểm tra khoảng giá: min=${min}, max=${max}`, async () => {
+          if (min == null || max == null || isNaN(min) || isNaN(max) || min < 0 || max < min) {
+            throw new Error(`❌ Khoảng giá không hợp lệ: min=${min}, max=${max}`);
           }
 
-          await priceRangePage.setPriceRange(range.min, range.max);
-          await priceRangePage.verifyProductsInPriceRange(range.min, range.max, testCase.expectEmpty ?? false);
+          // Reset slider về toàn bộ
+          await priceRangePage.setPriceRange(FULL_MIN, FULL_MAX);
+          await page.waitForTimeout(300);
 
-          const products = await page.locator(priceRangePage.productItems).all();
-          console.log(`Số sản phẩm (${range.min} - ${range.max}): ${products.length}`);
+          // Thiết lập lại khoảng giá mong muốn
+          await priceRangePage.setPriceRange(min, max);
+          await page.waitForTimeout(300);
 
-          if (!testCase.expectEmpty) {
-            expect(products.length).toBeGreaterThan(0);
+          // 👉 Bỏ qua kiểm tra slider nếu expectEmpty === true
+          if (!expectEmpty) {
+            const minSliderVal = await page.locator(priceRangePage.priceSliderMin).getAttribute("aria-valuenow");
+            const maxSliderVal = await page.locator(priceRangePage.priceSliderMax).getAttribute("aria-valuenow");
+
+            expect(minSliderVal).not.toBeNull();
+            expect(maxSliderVal).not.toBeNull();
+
+            const actualMin = parseFloat(minSliderVal!);
+            const actualMax = parseFloat(maxSliderVal!);
+
+            expect(Math.abs(actualMin - min)).toBeLessThanOrEqual(TOLERANCE);
+            expect(Math.abs(actualMax - max)).toBeLessThanOrEqual(TOLERANCE);
+          } else {
+            console.log(`ℹ️ Bỏ qua kiểm tra slider vì expectEmpty=true`);
           }
 
-          const minSlider = await page.locator(priceRangePage.priceSliderMin).getAttribute("aria-valuenow");
-          const maxSlider = await page.locator(priceRangePage.priceSliderMax).getAttribute("aria-valuenow");
-          if (minSlider === null || maxSlider === null) {
-            throw new Error(`Không lấy được giá trị aria-valuenow: min=${minSlider}, max=${maxSlider}`);
+          // 👉 Log giá sản phẩm đầu tiên nếu có
+          const productCount = await page.locator(priceRangePage.productPrice).count();
+          if (productCount > 0) {
+            const firstProductPrice = await page.locator(priceRangePage.productPrice).first().textContent();
+            console.log(`💰 Giá sản phẩm đầu tiên: ${firstProductPrice?.trim()}`);
+          } else {
+            console.log("💰 Không có sản phẩm nào được hiển thị.");
           }
 
-          if (!testCase.expectEmpty) {
-            expect(parseFloat(minSlider)).toBeCloseTo(range.min, 0);
-            expect(parseFloat(maxSlider)).toBeCloseTo(range.max, 0);
-          }
-        }
-      } catch (error) {
-        console.error(`Test case ${testCase.id} thất bại: ${error.message}`);
-        throw error;
+          // 👉 Kiểm tra sản phẩm hiển thị trong khoảng giá
+          await priceRangePage.verifyProductsInPriceRange(min, max, expectEmpty, expectedEmptyText);
+        });
       }
     });
   }

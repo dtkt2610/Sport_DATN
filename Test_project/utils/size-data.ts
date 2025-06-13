@@ -22,7 +22,7 @@ export const sizeFilterData: SizeFilterTestCase[] = [
   {
     id: 'SIZE03',
     description: 'Chọn lại size khác',
-    initialSelection: ['XS'],
+    initialSelection: ['M'],
     unselectAfter: true,    // Có bỏ chọn sau đó chọn lại không
     reselect: ["L"]
   },

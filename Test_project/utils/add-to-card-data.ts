@@ -37,7 +37,7 @@ export const AddToCartData: AddToCartTestCase[] = [
     colorRgb: "black",
     sizeLabel: "",  // kích cỡ (null nếu không chọn)
     quantity: 1,
-    expectedPopupMessage: "Vui lòng chọn kích cỡ !"
+    expectedPopupMessage: "Vui lòng chọn kích cỡ"
   },
   {
     id: "ATC04",
@@ -55,7 +55,7 @@ export const AddToCartData: AddToCartTestCase[] = [
     colorRgb: "",
     sizeLabel: "",
     quantity: 1,
-    expectedPopupMessage: "Vui lòng chọn màu sắc !"
+    expectedPopupMessage: "Vui lòng chọn màu sắc"
   }
 
 ];

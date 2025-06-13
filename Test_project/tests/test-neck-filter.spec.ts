@@ -1,9 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { NeckPage } from "../pages/neck-page"; 
+import { NeckPage } from "../pages/neck-page";
 import { NeckData } from "../utils/neck-data";
 
 test.describe("Lọc sản phẩm theo cổ áo", () => {
-  for (const testCase of NeckData){
+  for (const testCase of NeckData) {
     test(`${testCase.id} - ${testCase.description}`, async ({ page }) => {
       const neckPage = new NeckPage(page);
 
@@ -13,7 +13,7 @@ test.describe("Lọc sản phẩm theo cổ áo", () => {
 
       // Bước 2: Lấy số lượng sản phẩm hiện tại
       const previousCount = await neckPage.getVisibleProductCount();
-      
+
 
       // Bước 3: Chọn loại cổ áo ban đầu
       await neckPage.selectCollars(...testCase.initialSelection);
@@ -36,7 +36,6 @@ test.describe("Lọc sản phẩm theo cổ áo", () => {
         const finalCount = await neckPage.getVisibleProductCount();
         expect(finalCount).toBeGreaterThanOrEqual(0);
       }
-      await page.close();
     });
   }
 });
