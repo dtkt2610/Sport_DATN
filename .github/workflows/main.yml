@@ -146,3 +146,59 @@ jobs:
           path: Test_project/test-results/
           retention-days: 15
           if-no-files-found: warn
+
+      - name: Parse failed tests and send Jira bugs
+        if: failure()
+        working-directory: Test_project
+        env:
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_PROJECT_KEY: ${{ secrets.JIRA_PROJECT_KEY }}
+        run: |
+          REPORT_PATH="test-results/report.json"
+          if [ ! -f "$REPORT_PATH" ]; then
+            echo "Không tìm thấy report.json. Bỏ qua gửi Jira."
+            exit 0
+          fi
+
+          TESTS=$(jq -c '.suites[]?.specs[]? | select(.tests[].results[].status=="failed")' "$REPORT_PATH")
+
+          if [ -z "$TESTS" ]; then
+            echo "Không có lỗi nào cần gửi."
+            exit 0
+          fi
+
+          echo "$TESTS" | while IFS= read -r spec; do
+            NAME=$(echo "$spec" | jq -r '.title')
+            FILE=$(echo "$spec" | jq -r '.file')
+            SUMMARY="❌ Test Fail: $NAME"
+            DESCRIPTION="Chức năng lỗi: **$NAME**
+
+          • File: \`$FILE\`
+          • Repo: ${{ github.repository }}
+          • CI Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+           Xem thêm report HTML và trace file trong GitHub artifacts."
+
+            RESPONSE=$(curl -s -w "%{http_code}" -o response.json -X POST \
+              -u "$JIRA_EMAIL:$JIRA_API_TOKEN" \
+              -H "Content-Type: application/json" \
+              --data "{
+                \"fields\": {
+                  \"project\": { \"key\": \"$JIRA_PROJECT_KEY\" },
+                  \"summary\": \"$SUMMARY\",
+                  \"description\": \"$DESCRIPTION\",
+                  \"issuetype\": { \"name\": \"Bug\" }
+                }
+              }" \
+              "$JIRA_BASE_URL/rest/api/3/issue/")
+
+            if [ "$RESPONSE" = "201" ]; then
+              KEY=$(jq -r '.key' response.json)
+              echo "✅ Đã tạo Jira bug: $KEY"
+            else
+              echo "⚠️ Gửi lỗi Jira thất bại (HTTP $RESPONSE):"
+              cat response.json
+            fi
+          done
