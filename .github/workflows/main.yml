@@ -144,7 +144,15 @@ jobs:
         with:
           name: playwright-trace
           path: Test_project/test-results/
-          retention-days: 15
+          retention-days: 30
+          if-no-files-found: warn
+      - name: Upload Playwright JSON report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-json-report
+          path: Test_project/test-reports/report.json
+          retention-days: 30
           if-no-files-found: warn
 
       - name: Parse failed tests and send Jira bugs
@@ -156,13 +164,14 @@ jobs:
           JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
           JIRA_PROJECT_KEY: ${{ secrets.JIRA_PROJECT_KEY }}
         run: |
-          REPORT_PATH="test-results/report.json"
+          REPORT_PATH="test-reports/report.json"
           if [ ! -f "$REPORT_PATH" ]; then
             echo "Không tìm thấy report.json. Bỏ qua gửi Jira."
             exit 0
           fi
 
-          TESTS=$(jq -c '.suites[]?.specs[]? | select(.tests[].results[].status=="failed")' "$REPORT_PATH")
+          TESTS=$(jq -c '.suites[].specs[] | select(.tests[].results[]?.status == "failed")' "$REPORT_PATH")
+
 
           if [ -z "$TESTS" ]; then
             echo "Không có lỗi nào cần gửi."
