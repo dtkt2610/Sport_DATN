@@ -120,7 +120,6 @@ jobs:
       - name: Run Playwright tests
         working-directory: Test_project
         run: |
-          mkdir -p test-reports
           npx playwright test
 
       - name: Debug report folder contents
@@ -159,7 +158,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: playwright-json-report
-          path: Test_project/test-reports/report.json
+          path: Test_project/report.json
           retention-days: 30
           if-no-files-found: warn
 
@@ -172,7 +171,7 @@ jobs:
           JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
           JIRA_PROJECT_KEY: ${{ secrets.JIRA_PROJECT_KEY }}
         run: |
-          REPORT_PATH="test-reports/report.json"
+          REPORT_PATH="report.json"
           if [ ! -f "$REPORT_PATH" ]; then
             echo "Không tìm thấy report.json. Bỏ qua gửi Jira."
             exit 0
