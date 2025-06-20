@@ -171,30 +171,28 @@ jobs:
           JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
           JIRA_PROJECT_KEY: ${{ secrets.JIRA_PROJECT_KEY }}
         run: |
-          REPORT_PATH="report.json"
+          REPORT_PATH="test-reports/report.json"
           if [ ! -f "$REPORT_PATH" ]; then
-            echo "Không tìm thấy report.json. Bỏ qua gửi Jira."
+            echo "❌ Không tìm thấy report.json. Bỏ qua gửi Jira."
             exit 0
           fi
 
           TESTS=$(jq -c '
-            .suites[]
-            | .suites[]
-            | .specs[]
-            | select(
-                .tests[].results[]?.status == "failed"
-              )
-            ' "$REPORT_PATH")
-
+              .suites[]?
+            | .suites[]?
+            | .specs[]?
+            | select(.tests[].results[]?.status == "failed")
+          ' "$REPORT_PATH")
 
           if [ -z "$TESTS" ]; then
-            echo "Không có lỗi nào cần gửi."
+            echo "✅ Không có lỗi nào cần gửi Jira."
             exit 0
           fi
 
           echo "$TESTS" | while IFS= read -r spec; do
             NAME=$(echo "$spec" | jq -r '.title')
             FILE=$(echo "$spec" | jq -r '.file')
+
             SUMMARY="❌ Test Fail: $NAME"
             DESCRIPTION="Chức năng lỗi: **$NAME**
 
@@ -202,26 +200,31 @@ jobs:
           • Repo: ${{ github.repository }}
           • CI Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
-           Xem thêm report HTML và trace file trong GitHub artifacts."
+          👉 Xem thêm HTML report và trace file trong GitHub artifacts."
 
-            RESPONSE=$(curl -s -w "%{http_code}" -o response.json -X POST \
-              -u "$JIRA_EMAIL:$JIRA_API_TOKEN" \
-              -H "Content-Type: application/json" \
-              --data "{
-                \"fields\": {
-                  \"project\": { \"key\": \"$JIRA_PROJECT_KEY\" },
-                  \"summary\": \"$SUMMARY\",
-                  \"description\": \"$DESCRIPTION\",
-                  \"issuetype\": { \"name\": \"Bug\" }
+          # ✅ Escape JSON safely using jq
+            PAYLOAD=$(jq -n --arg summary "$SUMMARY" --arg desc "$DESCRIPTION" --arg project "$JIRA_PROJECT_KEY" '
+              {
+                fields: {
+                  project: { key: $project },
+                  summary: $summary,
+                  description: $desc,
+                  issuetype: { name: "Bug" }
                 }
-              }" \
-              "$JIRA_BASE_URL/rest/api/3/issue/")
+              }
+            ')
 
-            if [ "$RESPONSE" = "201" ]; then
-              KEY=$(jq -r '.key' response.json)
-              echo "✅ Đã tạo Jira bug: $KEY"
-            else
+          RESPONSE=$(curl -s -w "%{http_code}" -o response.json -X POST \
+            -u "$JIRA_EMAIL:$JIRA_API_TOKEN" \
+            -H "Content-Type: application/json" \
+            --data "$PAYLOAD" \
+            "$JIRA_BASE_URL/rest/api/3/issue/")
+
+          if [ "$RESPONSE" = "201" ]; then
+            KEY=$(jq -r '.key' response.json)
+            echo "✅ Đã tạo Jira bug: $KEY"
+          else
               echo "⚠️ Gửi lỗi Jira thất bại (HTTP $RESPONSE):"
               cat response.json
-            fi
+          fi
           done
