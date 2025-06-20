@@ -177,7 +177,14 @@ jobs:
             exit 0
           fi
 
-          TESTS=$(jq -c '.suites[].specs[] | select(.tests[].results[]?.status == "failed")' "$REPORT_PATH")
+          TESTS=$(jq -c '
+            .suites[]
+            | .suites[]
+            | .specs[]
+            | select(
+                .tests[].results[]?.status == "failed"
+              )
+            ' "$REPORT_PATH")
 
 
           if [ -z "$TESTS" ]; then
