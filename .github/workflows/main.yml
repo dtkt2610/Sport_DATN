@@ -171,7 +171,7 @@ jobs:
           JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
           JIRA_PROJECT_KEY: ${{ secrets.JIRA_PROJECT_KEY }}
         run: |
-          REPORT_PATH="Test_project/report.json"
+          REPORT_PATH="../report.json"
           if [ ! -f "$REPORT_PATH" ]; then
             echo "❌ Không tìm thấy report.json. Bỏ qua gửi Jira."
             exit 0
