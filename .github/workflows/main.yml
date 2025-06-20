@@ -1,4 +1,5 @@
 name: Full CI with SQL Server and Playwright
+
 on:
   push:
     branches: [main]
@@ -8,6 +9,7 @@ on:
 jobs:
   e2e-test:
     runs-on: ubuntu-latest
+
     services:
       sqlserver:
         image: mcr.microsoft.com/mssql/server:2019-latest
@@ -57,6 +59,7 @@ jobs:
           sqlcmd -S localhost -U sa -P "Kimtho@123" -d Sports -i SQL/CREATE_TABLE.sql
           sqlcmd -S localhost -U sa -P "Kimtho@123" -d Sports -i SQL/DATN.sql
           sqlcmd -S localhost -U sa -P "Kimtho@123" -d Sports -i SQL/CONTRAINT.sql
+
       - name: Wait for data availability
         run: |
           echo "Checking if ChatLieu table has data..."
@@ -66,6 +69,7 @@ jobs:
             if [ "$COUNT" -gt 0 ]; then echo "Data ready"; break; fi
             sleep 3
           done
+
       - name: Cache Maven packages
         uses: actions/cache@v4
         with:
@@ -108,26 +112,17 @@ jobs:
       - name: Wait for backend API ready
         run: npx wait-on http://localhost:8080/api/chatlieu/hienthi --timeout 300000
 
-
-      - name: Install Playwright test dependencies
+      - name: Install Playwright dependencies
         working-directory: Test_project
-        run: npm ci
+        run: |
+          npm ci
+          npx playwright install --with-deps
 
-      - name: Install Playwright browsers
+      - name: Run Playwright tests with reporter
         working-directory: Test_project
-        run: npx playwright install --with-deps
-
-      - name: Run Playwright tests
-        working-directory: Test_project
-        run: npx playwright test
-
-      - name: Print backend log on failure
-        if: failure()
-        run: cat backend.log || echo "No backend log"
-
-      - name: Print frontend log on failure
-        if: failure()
-        run: cat frontend.log || echo "No frontend log"
+        run: |
+          mkdir -p test-reports
+          npx playwright test --reporter=list,json=./test-reports/report.json,html=./test-reports
 
       - name: Upload Playwright HTML report
         if: always()
@@ -138,20 +133,21 @@ jobs:
           retention-days: 30
           if-no-files-found: warn
 
-      - name: Upload Playwright trace
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-trace
-          path: Test_project/test-results/
-          retention-days: 30
-          if-no-files-found: warn
       - name: Upload Playwright JSON report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-json-report
           path: Test_project/test-reports/report.json
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Upload Playwright trace
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-trace
+          path: Test_project/test-results/
           retention-days: 30
           if-no-files-found: warn
 
@@ -166,15 +162,14 @@ jobs:
         run: |
           REPORT_PATH="test-reports/report.json"
           if [ ! -f "$REPORT_PATH" ]; then
-            echo "Không tìm thấy report.json. Bỏ qua gửi Jira."
+            echo "❌ Không tìm thấy report.json. Bỏ qua gửi Jira."
             exit 0
           fi
 
           TESTS=$(jq -c '.suites[].specs[] | select(.tests[].results[]?.status == "failed")' "$REPORT_PATH")
 
-
           if [ -z "$TESTS" ]; then
-            echo "Không có lỗi nào cần gửi."
+            echo "✅ Không có lỗi nào cần gửi."
             exit 0
           fi
 
@@ -188,7 +183,7 @@ jobs:
           • Repo: ${{ github.repository }}
           • CI Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
-           Xem thêm report HTML và trace file trong GitHub artifacts."
+          Xem thêm HTML report và trace file trong GitHub artifacts."
 
             RESPONSE=$(curl -s -w "%{http_code}" -o response.json -X POST \
               -u "$JIRA_EMAIL:$JIRA_API_TOKEN" \
