@@ -194,37 +194,76 @@ jobs:
             FILE=$(echo "$spec" | jq -r '.file')
 
             SUMMARY="❌ Test Fail: $NAME"
-            DESCRIPTION="Chức năng lỗi: **$NAME**
 
-          • File: \`$FILE\`
-          • Repo: ${{ github.repository }}
-          • CI Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-
-          👉 Xem thêm HTML report và trace file trong GitHub artifacts."
-
-          # ✅ Escape JSON safely using jq
-            PAYLOAD=$(jq -n --arg summary "$SUMMARY" --arg desc "$DESCRIPTION" --arg project "$JIRA_PROJECT_KEY" '
+            PAYLOAD=$(jq -n \
+              --arg summary "$SUMMARY" \
+              --arg project "$JIRA_PROJECT_KEY" \
+              --arg name "$NAME" \
+              --arg file "$FILE" \
+              --arg repo "${{ github.repository }}" \
+              --arg run_url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+              '
               {
                 fields: {
                   project: { key: $project },
                   summary: $summary,
-                  description: $desc,
+                  description: {
+                    type: "doc",
+                    version: 1,
+                    content: [
+                      {
+                        type: "paragraph",
+                        content: [
+                          { type: "text", text: "❌ Chức năng lỗi: " },
+                          { type: "text", text: $name, marks: [{ type: "strong" }] }
+                        ]
+                      },
+                      {
+                        type: "paragraph",
+                        content: [
+                          { type: "text", text: "• File: " },
+                          { type: "text", text: $file, marks: [{ type: "code" }] }
+                        ]
+                      },
+                      {
+                        type: "paragraph",
+                        content: [
+                          { type: "text", text: "• Repo: " },
+                          { type: "text", text: $repo }
+                        ]
+                      },
+                      {
+                        type: "paragraph",
+                        content: [
+                          { type: "text", text: "• CI Run: " },
+                          { type: "text", text: $run_url }
+                        ]
+                      },
+                      {
+                        type: "paragraph",
+                        content: [
+                          { type: "text", text: "👉 Xem thêm HTML report và trace file trong GitHub artifacts." }
+                        ]
+                      }
+                    ]
+                  },
                   issuetype: { name: "Bug" }
                 }
               }
-            ')
+              ')
 
-          RESPONSE=$(curl -s -w "%{http_code}" -o response.json -X POST \
-            -u "$JIRA_EMAIL:$JIRA_API_TOKEN" \
-            -H "Content-Type: application/json" \
-            --data "$PAYLOAD" \
-            "$JIRA_BASE_URL/rest/api/3/issue/")
+            RESPONSE=$(curl -s -w "%{http_code}" -o response.json -X POST \
+              -u "$JIRA_EMAIL:$JIRA_API_TOKEN" \
+              -H "Content-Type: application/json" \
+              --data "$PAYLOAD" \
+              "$JIRA_BASE_URL/rest/api/3/issue/")
 
-          if [ "$RESPONSE" = "201" ]; then
-            KEY=$(jq -r '.key' response.json)
-            echo "✅ Đã tạo Jira bug: $KEY"
-          else
+            if [ "$RESPONSE" = "201" ]; then
+              KEY=$(jq -r '.key' response.json)
+              echo "✅ Đã tạo Jira bug: $KEY"
+            else
               echo "⚠️ Gửi lỗi Jira thất bại (HTTP $RESPONSE):"
               cat response.json
-          fi
+            fi
           done
+
