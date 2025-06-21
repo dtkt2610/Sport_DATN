@@ -171,106 +171,119 @@ jobs:
           JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
           JIRA_PROJECT_KEY: ${{ secrets.JIRA_PROJECT_KEY }}
         run: |
-           REPORT_PATH="./report.json"
-            if [ ! -f "$REPORT_PATH" ]; then
-              echo "❌ Không tìm thấy report.json. Bỏ qua gửi Jira."
-              exit 0
-            fi
-            echo "🔍 Đang phân tích các lỗi failed test..."
-            jq -c '
-              .suites[] | .suites[]? | .specs[]? |
+          REPORT_PATH="./report.json"
+          if [ ! -f "$REPORT_PATH" ]; then
+            echo "❌ Không tìm thấy report.json. Bỏ qua gửi Jira."
+            exit 0
+          fi
+
+          echo "🔍 Đang phân tích các lỗi failed test..."
+
+          jq -c '
+            .suites[] | .suites[]? | .specs[]? |
+            {
+              title,
+              file,
+              tests: (
+                [.tests[] | select(.results != null) | {
+                  project: .projectName,
+                  result: (
+                    [.results[]
+                      | select(
+                          .status == "failed"
+                          and (.error | type == "object")
+                          and (.error.message | type == "string")
+                      )] | first
+                  )
+                }] | map(select(.result != null))
+              )
+            } | select(.tests | length > 0)
+          ' "$REPORT_PATH" | jq -s '.' | jq 'map({
+            title: .[0].title,
+            file: .[0].file,
+            errors: (.[].tests | map({
+              browser: .project,
+              error: .result.error,
+              retry: .result.retry
+            }))
+          }) | unique_by(.title + "-" + .file)' | jq -c '.[]' | while read -r test; do
+
+            TITLE=$(echo "$test" | jq -r '.title')
+            FILE=$(echo "$test" | jq -r '.file')
+
+            ERRORS=$(echo "$test" | jq -r '
+              .errors | map(
+                "• Browser: \(.browser)\n  Retry: \(.retry)\n  Error: \(
+                  if (.error | type) == "object" and (.error.message | type) == "string"
+                  then .error.message
+                  else (.error | tostring)
+                  end
+                )"
+              ) | join("\n\n")
+            ')
+
+            SUMMARY="❌ Test Fail: $TITLE"
+
+            DESCRIPTION=$(jq -n --arg title "$TITLE" --arg file "$FILE" --arg errors "$ERRORS" '
               {
-                title,
-                file,
-                tests: (
-                  [.tests[] | select(.results != null) | {
-                    project: .projectName,
-                    result: (
-                      [.results[]
-                        | select(
-                            .status == "failed"
-                            and (.error | type == "object")
-                            and (.error.message | type == "string")
-                        )] | first
-                    )
-                  }] | map(select(.result != null))
-                )
-              } | select(.tests | length > 0)
-            ' "$REPORT_PATH" | jq -s '.' | jq 'map({
-              title: .[0].title,
-              file: .[0].file,
-              errors: (.[].tests | map({
-                browser: .project,
-                error: .result.error,
-                retry: .result.retry
-              }))
-            }) | unique_by(.title + "-" + .file)' | jq -c '.[]' | while read -r test; do
-              TITLE=$(echo "$test" | jq -r '.title')
-              FILE=$(echo "$test" | jq -r '.file')
-              ERRORS=$(echo "$test" | jq -r '.errors | map("• Browser: \(.browser)\n  Retry: \(.retry)\n  Error: \(.error.message)") | join("\n\n")')
-              SUMMARY="❌ Test Fail: $TITLE"
-
-              DESCRIPTION=$(jq -n --arg title "$TITLE" --arg file "$FILE" --arg errors "$ERRORS" '
-                {
-                  type: "doc",
-                  version: 1,
-                  content: [
-                    {
-                      type: "paragraph",
-                      content: [
-                        { type: "text", text: "❌ Chức năng lỗi: " },
-                        { type: "text", text: $title, marks: [ { type: "strong" } ] }
-                      ]
-                    },
-                    {
-                      type: "paragraph",
-                      content: [
-                        { type: "text", text: "• File: " },
-                        { type: "text", text: $file, marks: [ { type: "code" } ] }
-                      ]
-                    },
-                    {
-                      type: "paragraph",
-                      content: [
-                        { type: "text", text: "• Các lỗi ghi nhận:" }
-                      ]
-                    },
-                    {
-                      type: "paragraph",
-                      content: [
-                        { type: "text", text: $errors }
-                      ]
-                    }
-                  ]
-                }
-              ')
-
-              PAYLOAD=$(jq -n \
-                --arg summary "$SUMMARY" \
-                --arg project "$JIRA_PROJECT_KEY" \
-                --argjson description "$DESCRIPTION" '
-                {
-                  fields: {
-                    project: { key: $project },
-                    summary: $summary,
-                    description: $description,
-                    issuetype: { name: "Bug" }
+                type: "doc",
+                version: 1,
+                content: [
+                  {
+                    type: "paragraph",
+                    content: [
+                      { type: "text", text: "❌ Chức năng lỗi: " },
+                      { type: "text", text: $title, marks: [ { type: "strong" } ] }
+                    ]
+                  },
+                  {
+                    type: "paragraph",
+                    content: [
+                      { type: "text", text: "• File: " },
+                      { type: "text", text: $file, marks: [ { type: "code" } ] }
+                    ]
+                  },
+                  {
+                    type: "paragraph",
+                    content: [
+                      { type: "text", text: "• Các lỗi ghi nhận:" }
+                    ]
+                  },
+                  {
+                    type: "paragraph",
+                    content: [
+                      { type: "text", text: $errors }
+                    ]
                   }
+                ]
+              }
+            ')
+
+            PAYLOAD=$(jq -n \
+              --arg summary "$SUMMARY" \
+              --arg project "$JIRA_PROJECT_KEY" \
+              --argjson description "$DESCRIPTION" '
+              {
+                fields: {
+                  project: { key: $project },
+                  summary: $summary,
+                  description: $description,
+                  issuetype: { name: "Bug" }
                 }
-              ')
+              }
+            ')
 
-              RESPONSE=$(curl -s -w "%{http_code}" -o response.json -X POST \
-                -u "$JIRA_EMAIL:$JIRA_API_TOKEN" \
-                -H "Content-Type: application/json" \
-                --data "$PAYLOAD" \
-                "$JIRA_BASE_URL/rest/api/3/issue/")
+            RESPONSE=$(curl -s -w "%{http_code}" -o response.json -X POST \
+              -u "$JIRA_EMAIL:$JIRA_API_TOKEN" \
+              -H "Content-Type: application/json" \
+              --data "$PAYLOAD" \
+              "$JIRA_BASE_URL/rest/api/3/issue/")
 
-              if [ "$RESPONSE" = "201" ]; then
-                KEY=$(jq -r '.key' response.json)
-                echo "✅ Đã tạo Jira bug: $KEY"
-              else
-                echo "⚠️ Gửi lỗi Jira thất bại (HTTP $RESPONSE):"
-                cat response.json
-              fi
-            done
-
+            if [ "$RESPONSE" = "201" ]; then
+              KEY=$(jq -r '.key' response.json)
+              echo "✅ Đã tạo Jira bug: $KEY"
+            else
+              echo "⚠️ Gửi lỗi Jira thất bại (HTTP $RESPONSE):"
+              cat response.json
+            fi
+          done
