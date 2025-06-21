@@ -171,103 +171,66 @@ jobs:
           JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
           JIRA_PROJECT_KEY: ${{ secrets.JIRA_PROJECT_KEY }}
         run: |
-          REPORT_PATH="./report.json"
-          if [ ! -f "$REPORT_PATH" ]; then
-            echo "❌ Không tìm thấy report.json. Bỏ qua gửi Jira."
-            exit 0
-          fi
+            REPORT_PATH="./report.json"
+            if [ ! -f "$REPORT_PATH" ]; then
+              echo "❌ Không tìm thấy report.json. Bỏ qua gửi Jira."
+              exit 0
+            fi
 
-          TESTS=$(jq -c '
-            .suites[]?
-            | .suites[]?
-            | .specs[]?
-            | .tests[]?
-            | select(.results[-1].status == "failed")
-          ' "$REPORT_PATH")
+            echo "🔍 Đang phân tích các lỗi failed test..."
 
-          if [ -z "$TESTS" ]; then
-            echo "✅ Không có lỗi nào cần gửi Jira."
-            exit 0
-          fi
+            jq -c '
+              .suites[]?.suites[]?.specs[]? |
+              {
+              title,
+              file,
+              tests: (
+                  [.tests[]? | {
+                  project: .projectName,
+                  result: (.results[]? | select(.status == "failed") | {
+                  error: .error.message,
+                  retry: .retry
+                 })?
+                }] | map(select(.result != null))
+                )
+              } | select(.tests | length > 0)
+            ' "$REPORT_PATH" | jq -s '.' | jq 'map({
+              title: .[0].title,
+              file: .[0].file,
+              errors: (.[].tests | map({
+              browser: .project,
+              error: .result.error,
+              retry: .result.retry
+              }))
+            }) | unique_by(.title + "-" + .file)' | jq -c '.[]' | while read -r test; do
+            TITLE=$(echo "$test" | jq -r '.title')
+            FILE=$(echo "$test" | jq -r '.file')
+            ERRORS=$(echo "$test" | jq -r '.errors | map("• Browser: \(.browser)\n  Retry: \(.retry)\n  Error: \(.error)") | join("\n\n")')
+            SUMMARY="❌ Test Fail: $TITLE"
+            DESCRIPTION=$(jq -n --arg title "$TITLE" --arg file "$FILE" --arg errors "$ERRORS" '
+            {
+              type: "doc",
+              version: 1,
+              content: [
+                { type: "paragraph", content: [ { type: "text", text: "❌ Chức năng lỗi: " }, { type: "text", text: $title, marks: [ { type: "strong" } ] } ] },
+                { type: "paragraph", content: [ { type: "text", text: "• File: " }, { type: "text", text: $file, marks: [ { type: "code" } ] } ] },
+                { type: "paragraph", content: [ { type: "text", text: "• Các lỗi ghi nhận:" } ] },
+                { type: "paragraph", content: [ { type: "text", text: $errors } ] }
+              ]
+            }')
 
-          echo "$TESTS" | while IFS= read -r test; do
-            NAME=$(echo "$test" | jq -r '.title')
-            FILE=$(echo "$test" | jq -r '.location.file')
-            BROWSER=$(echo "$test" | jq -r '.results[-1].projectName')
-            ERROR=$(echo "$test" | jq -r '.results[-1].errors[0].message // "Không có lỗi cụ thể."')
-
-            SUMMARY="❌ Test Fail: $NAME [$BROWSER]"
             PAYLOAD=$(jq -n \
               --arg summary "$SUMMARY" \
               --arg project "$JIRA_PROJECT_KEY" \
-              --arg name "$NAME" \
-              --arg file "$FILE" \
-              --arg browser "$BROWSER" \
-              --arg error "$ERROR" \
-              --arg repo "${{ github.repository }}" \
-              --arg run_url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" '
-              {
-                fields: {
-                  project: { key: $project },
-                  summary: $summary,
-                  description: {
-                    type: "doc",
-                    version: 1,
-                    content: [
-                      {
-                        type: "paragraph",
-                        content: [
-                          { type: "text", text: "❌ Chức năng lỗi: " },
-                          { type: "text", text: $name, marks: [{ type: "strong" }] }
-                        ]
-                      },
-                      {
-                        type: "paragraph",
-                        content: [
-                          { type: "text", text: "• Trình duyệt: " },
-                          { type: "text", text: $browser }
-                        ]
-                      },
-                      {
-                        type: "paragraph",
-                        content: [
-                          { type: "text", text: "• File: " },
-                          { type: "text", text: $file, marks: [{ type: "code" }] }
-                        ]
-                      },
-                      {
-                        type: "paragraph",
-                        content: [
-                          { type: "text", text: "• Lỗi: " },
-                          { type: "text", text: $error }
-                        ]
-                      },
-                      {
-                        type: "paragraph",
-                        content: [
-                          { type: "text", text: "• Repo: " },
-                          { type: "text", text: $repo }
-                        ]
-                      },
-                      {
-                        type: "paragraph",
-                        content: [
-                          { type: "text", text: "• CI Run: " },
-                          { type: "text", text: $run_url }
-                        ]
-                      },
-                      {
-                        type: "paragraph",
-                        content: [
-                          { type: "text", text: "👉 Xem thêm HTML report và trace file trong GitHub artifacts." }
-                        ]
-                      }
-                    ]
-                  },
-                  issuetype: { name: "Bug" }
+              --argjson description "$DESCRIPTION" '
+            {
+              fields: {
+                project: { key: $project },
+                summary: $summary,
+                description: $description,
+                issuetype: { name: "Bug" }
                 }
-              }
-            ')
+              }')
 
             RESPONSE=$(curl -s -w "%{http_code}" -o response.json -X POST \
               -u "$JIRA_EMAIL:$JIRA_API_TOKEN" \
@@ -275,12 +238,13 @@ jobs:
               --data "$PAYLOAD" \
               "$JIRA_BASE_URL/rest/api/3/issue/")
 
-            if [ "$RESPONSE" = "201" ]; then
-              KEY=$(jq -r '.key' response.json)
-              echo "✅ Đã tạo Jira bug: $KEY"
-            else
-              echo "⚠️ Gửi lỗi Jira thất bại (HTTP $RESPONSE):"
-              cat response.json
-            fi
-          done
+              if [ "$RESPONSE" = "201" ]; then
+                KEY=$(jq -r '.key' response.json)
+                echo "✅ Đã tạo Jira bug: $KEY"
+              else
+                echo "⚠️ Gửi lỗi Jira thất bại (HTTP $RESPONSE):"
+                cat response.json
+              fi
+            done
+
 
