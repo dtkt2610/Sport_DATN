@@ -176,9 +176,7 @@ jobs:
               echo "❌ Không tìm thấy report.json. Bỏ qua gửi Jira."
               exit 0
             fi
-
             echo "🔍 Đang phân tích các lỗi failed test..."
-
             jq -c '
               .suites[] | .suites[]? | .specs[]? |
               {
@@ -188,7 +186,12 @@ jobs:
                   [.tests[] | select(.results != null) | {
                     project: .projectName,
                     result: (
-                      [.results[] | select(.status == "failed" and .error and .error.message)] | first
+                      [.results[]
+                        | select(
+                            .status == "failed"
+                            and (.error | type == "object")
+                            and (.error.message | type == "string")
+                        )] | first
                     )
                   }] | map(select(.result != null))
                 )
@@ -202,10 +205,9 @@ jobs:
                 retry: .result.retry
               }))
             }) | unique_by(.title + "-" + .file)' | jq -c '.[]' | while read -r test; do
-
               TITLE=$(echo "$test" | jq -r '.title')
               FILE=$(echo "$test" | jq -r '.file')
-              ERRORS=$(echo "$test" | jq -r '.errors | map("• Browser: \(.browser)\n  Retry: \(.retry)\n  Error: \(.error)") | join("\n\n")')
+              ERRORS=$(echo "$test" | jq -r '.errors | map("• Browser: \(.browser)\n  Retry: \(.retry)\n  Error: \(.error.message)") | join("\n\n")')
               SUMMARY="❌ Test Fail: $TITLE"
 
               DESCRIPTION=$(jq -n --arg title "$TITLE" --arg file "$FILE" --arg errors "$ERRORS" '
@@ -271,3 +273,4 @@ jobs:
                 cat response.json
               fi
             done
+
