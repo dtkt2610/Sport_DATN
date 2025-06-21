@@ -178,10 +178,11 @@ jobs:
           fi
 
           TESTS=$(jq -c '
-              .suites[]?
+            .suites[]?
             | .suites[]?
             | .specs[]?
-            | select(.tests[].results[]?.status == "failed")
+            | .tests[]?
+            | select(.results[-1].status == "failed")
           ' "$REPORT_PATH")
 
           if [ -z "$TESTS" ]; then
@@ -189,20 +190,22 @@ jobs:
             exit 0
           fi
 
-          echo "$TESTS" | while IFS= read -r spec; do
-            NAME=$(echo "$spec" | jq -r '.title')
-            FILE=$(echo "$spec" | jq -r '.file')
+          echo "$TESTS" | while IFS= read -r test; do
+            NAME=$(echo "$test" | jq -r '.title')
+            FILE=$(echo "$test" | jq -r '.location.file')
+            BROWSER=$(echo "$test" | jq -r '.results[-1].projectName')
+            ERROR=$(echo "$test" | jq -r '.results[-1].errors[0].message // "Không có lỗi cụ thể."')
 
-            SUMMARY="❌ Test Fail: $NAME"
-
+            SUMMARY="❌ Test Fail: $NAME [$BROWSER]"
             PAYLOAD=$(jq -n \
               --arg summary "$SUMMARY" \
               --arg project "$JIRA_PROJECT_KEY" \
               --arg name "$NAME" \
               --arg file "$FILE" \
+              --arg browser "$BROWSER" \
+              --arg error "$ERROR" \
               --arg repo "${{ github.repository }}" \
-              --arg run_url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
-              '
+              --arg run_url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" '
               {
                 fields: {
                   project: { key: $project },
@@ -221,8 +224,22 @@ jobs:
                       {
                         type: "paragraph",
                         content: [
+                          { type: "text", text: "• Trình duyệt: " },
+                          { type: "text", text: $browser }
+                        ]
+                      },
+                      {
+                        type: "paragraph",
+                        content: [
                           { type: "text", text: "• File: " },
                           { type: "text", text: $file, marks: [{ type: "code" }] }
+                        ]
+                      },
+                      {
+                        type: "paragraph",
+                        content: [
+                          { type: "text", text: "• Lỗi: " },
+                          { type: "text", text: $error }
                         ]
                       },
                       {
@@ -250,7 +267,7 @@ jobs:
                   issuetype: { name: "Bug" }
                 }
               }
-              ')
+            ')
 
             RESPONSE=$(curl -s -w "%{http_code}" -o response.json -X POST \
               -u "$JIRA_EMAIL:$JIRA_API_TOKEN" \
