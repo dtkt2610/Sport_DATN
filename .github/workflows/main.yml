@@ -177,12 +177,18 @@ jobs:
               exit 0
             fi
             
+            # ✅ Chỉ lấy lần chạy cuối cùng nếu bị fail (tránh trùng khi retry)
             TESTS=$(jq -c '
-              .suites[]?
-              | .suites[]?
-              | .specs[]?
-              | .tests[]?
-              | select(.results[-1].status == "failed")
+              .suites[]?.suites[]?.specs[]? as $spec |
+              $spec.tests[]? as $test |
+              ($test.results | last) as $result |
+              select($result.status == "failed") |
+              {
+                name: $test.title,
+                file: $spec.file,
+                browser: $result.projectName,
+                video: ($result.attachments[]? | select(.name == "video") | .path)
+              }
             ' "$REPORT_PATH")
             
             if [ -z "$TESTS" ]; then
@@ -191,12 +197,10 @@ jobs:
             fi
             
             echo "$TESTS" | while IFS= read -r test; do
-              NAME=$(echo "$test" | jq -r '.title')
-              FILE=$(echo "$test" | jq -r '.location.file // "unknown-file"')
-              BROWSER=$(echo "$test" | jq -r '.results[-1].projectName // "unknown-browser"')
-            
-              # 👉 Tìm đường dẫn video tương ứng nếu có
-              VIDEO_PATH=$(echo "$test" | jq -r '.results[-1].attachments[]? | select(.name == "video") | .path' | head -n1)
+              NAME=$(echo "$test" | jq -r '.name // "unknown-test"')
+              FILE=$(echo "$test" | jq -r '.file // "unknown-file"')
+              BROWSER=$(echo "$test" | jq -r '.browser // "unknown-browser"')
+              VIDEO_PATH=$(echo "$test" | jq -r '.video // empty')
             
               SUMMARY="❌ Test Fail: $NAME [$BROWSER]"
             
@@ -274,7 +278,7 @@ jobs:
                 KEY=$(jq -r '.key' response.json)
                 echo "✅ Đã tạo Jira bug: $KEY"
             
-                # 🎥 Đính kèm video nếu có
+                # 📎 Gửi video nếu có
                 if [ -n "$VIDEO_PATH" ] && [ -f "$VIDEO_PATH" ]; then
                   echo "📎 Đính kèm video: $VIDEO_PATH"
                   curl -s -X POST \
@@ -283,7 +287,7 @@ jobs:
                     -F "file=@$VIDEO_PATH" \
                     "$JIRA_BASE_URL/rest/api/3/issue/$KEY/attachments"
                 else
-                  echo "⚠️ Không tìm thấy video tương ứng cho $NAME"
+                  echo "⚠️ Không tìm thấy video cho: $NAME"
                 fi
             
               else
