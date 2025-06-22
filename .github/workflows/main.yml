@@ -183,9 +183,12 @@ jobs:
             .suites[]?.suites[]?.specs[]? as $spec |
             $spec.tests[]? as $test |
             select(($test.results | type) == "array") |
-            ($test.results | reverse | .[]? | select(.status == "failed")) as $result |
+            ($test.results 
+              | map(select(.status == "failed"))
+              | max_by(.retry // 0)
+            ) as $result |
             {
-              title: $test.title,
+              title: $spec.title,
               file: $spec.file,
               browser: ($test.projectName // "unknown-browser"),
               retry: ($result.retry // 0),
