@@ -177,24 +177,22 @@ jobs:
               exit 0
             fi
             
-            # ✅ Lấy lần chạy cuối (sau retry), lấy projectName từ test, không bị trùng
             TESTS=$(jq -c '
               .suites[]?.suites[]?.specs[]? as $spec |
               $spec.tests[]? as $test |
-              ($test.results | last) as $result |
+              ($test.results // [] | last) as $result |
               select($result.status == "failed") |
               {
                 name: ($test.title | join(" › ")),
                 file: $spec.file,
                 browser: ($test.projectName // "unknown-browser"),
                 video: (
-                  ($result.attachments // []) 
-                  | map(select(.name == "video")) 
-                  | if length > 0 then .[0].path else empty end
+                  ($result.attachments? // []) 
+                  | map(select(.name == "video" and .path != null)) 
+                  | .[0].path // empty
                 )
               }
             ' "$REPORT_PATH")
-
             
             if [ -z "$TESTS" ]; then
               echo "✅ Không có lỗi nào cần gửi Jira."
@@ -283,7 +281,7 @@ jobs:
                 KEY=$(jq -r '.key' response.json)
                 echo "✅ Đã tạo Jira bug: $KEY"
             
-                # 📎 Gửi video nếu có
+                # 📎 Đính kèm video nếu có
                 if [ -n "$VIDEO_PATH" ] && [ -f "$VIDEO_PATH" ]; then
                   echo "📎 Đính kèm video: $VIDEO_PATH"
                   curl -s -X POST \
@@ -300,3 +298,4 @@ jobs:
                 cat response.json
               fi
             done
+
