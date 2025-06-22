@@ -222,7 +222,7 @@ jobs:
               retry: (.result.retry // 0),
               attachments: (.attachments // [])
             }))
-          }) | unique_by(.title + \"-\" + .file)' | jq -c '.[]' | while read -r test; do
+          }) | unique_by(.title + "-" + .file)' | jq -c '.[]' | while read -r test; do
 
             TITLE=$(echo "$test" | jq -r '.title')
             FILE=$(echo "$test" | jq -r '.file')
