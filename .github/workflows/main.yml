@@ -171,137 +171,123 @@ jobs:
           JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
           JIRA_PROJECT_KEY: ${{ secrets.JIRA_PROJECT_KEY }}
         run: |
-          REPORT_PATH="./report.json"
-          if [ ! -f "$REPORT_PATH" ]; then
-            echo "❌ Không tìm thấy report.json. Bỏ qua gửi Jira."
-            exit 0
-          fi
-
-          CI_LINK=$(jq -r '.config.metadata.ci.buildHref // empty' "$REPORT_PATH")
-
-          jq -c '
-            .suites[] | .suites[]? | .specs[]? |
-            {
-              title,
-              file,
-              tests: (
-                [.tests[] | select(.results != null) | {
-                  project: .projectName,
-                  result: (
-                    [.results[]
-                      | select(
-                          .status == "failed"
-                          and ((.error | type) == "object" or (.error | type) == "string" or (.error | type) == "number")
-                      )] | first
-                  ),
-                  attachments: (
-                    [.results[]
-                      | select(.status == "failed")
-                      | .attachments[]?.path
-                    ]
-                  )
-                }] | map(select(.result != null))
-              )
-            } | select(.tests | length > 0)
-          ' "$REPORT_PATH" | jq -s '.' | jq 'map({
-            title: .[0].title,
-            file: .[0].file,
-            items: (.[].tests | map({
-              browser: .project,
-              error: (
-                if (.result // null | type) == "object" then
-                  if (.result.error | type) == "object" and (.result.error.message | type) == "string"
-                  then .result.error.message
-                  elif (.result.error | type) == "string" or (.result.error | type) == "number"
-                  then (.result.error | tostring)
-                  else "Không có nội dung lỗi"
-                  end
-                else "Không có kết quả"
-                end
-              ),
-              retry: (.result.retry // 0),
-              attachments: (.attachments // [])
-            }))
-          }) | unique_by(.title + "-" + .file)' | jq -c '.[]' | while read -r test; do
-
-            TITLE=$(echo "$test" | jq -r '.title')
-            FILE=$(echo "$test" | jq -r '.file')
-
-            ERRORS=$(echo "$test" | jq -r --arg CI_LINK "$CI_LINK" '
-              .items | map(
-                "• Browser: \(.browser)\n  Retry: \(.retry)\n  Error: \(.error)\n  Artifacts:\n" +
-                (if (.attachments | length > 0) then
-                  (.attachments | map("    - \(. | sub(\"^\"; \"📎 \"))") | join("\n"))
-                else
-                  "    - (No attachments found)"
-                end)
-              ) | join("\n\n") + (if $CI_LINK != "" then "\n\n🔗 CI: " + $CI_LINK else "" end)
-            ')
-
-            SUMMARY="❌ Test Fail: $TITLE"
-
-            DESCRIPTION=$(jq -n --arg title "$TITLE" --arg file "$FILE" --arg errors "$ERRORS" '
-              {
-                type: "doc",
-                version: 1,
-                content: [
-                  {
-                    type: "paragraph",
-                    content: [
-                      { type: "text", text: "❌ Chức năng lỗi: " },
-                      { type: "text", text: $title, marks: [ { type: "strong" } ] }
-                    ]
-                  },
-                  {
-                    type: "paragraph",
-                    content: [
-                      { type: "text", text: "• File: " },
-                      { type: "text", text: $file, marks: [ { type: "code" } ] }
-                    ]
-                  },
-                  {
-                    type: "paragraph",
-                    content: [
-                      { type: "text", text: "• Các lỗi ghi nhận:" }
-                    ]
-                  },
-                  {
-                    type: "paragraph",
-                    content: [
-                      { type: "text", text: $errors }
-                    ]
-                  }
-                ]
-              }
-            ')
-
-            PAYLOAD=$(jq -n \
-              --arg summary "$SUMMARY" \
-              --arg project "$JIRA_PROJECT_KEY" \
-              --argjson description "$DESCRIPTION" '
-              {
-                fields: {
-                  project: { key: $project },
-                  summary: $summary,
-                  description: $description,
-                  issuetype: { name: "Bug" }
-                }
-              }
-            ')
-
-            RESPONSE=$(curl -s -w "%{http_code}" -o response.json -X POST \
-              -u "$JIRA_EMAIL:$JIRA_API_TOKEN" \
-              -H "Content-Type: application/json" \
-              --data "$PAYLOAD" \
-              "$JIRA_BASE_URL/rest/api/3/issue/")
-
-            if [ "$RESPONSE" = "201" ]; then
-              KEY=$(jq -r '.key' response.json)
-              echo "✅ Đã tạo Jira bug: $KEY"
-            else
-              echo "⚠️ Gửi lỗi Jira thất bại (HTTP $RESPONSE):"
-              cat response.json
+            REPORT_PATH="./report.json"
+            if [ ! -f "$REPORT_PATH" ]; then
+              echo "❌ Không tìm thấy report.json. Bỏ qua gửi Jira."
+              exit 0
             fi
-          done
-
-
+            
+            TESTS=$(jq -c '
+              .suites[]?
+              | .suites[]?
+              | .specs[]?
+              | .tests[]?
+              | select(.results[-1].status == "failed")
+            ' "$REPORT_PATH")
+            
+            if [ -z "$TESTS" ]; then
+              echo "✅ Không có lỗi nào cần gửi Jira."
+              exit 0
+            fi
+            
+            echo "$TESTS" | while IFS= read -r test; do
+              NAME=$(echo "$test" | jq -r '.title')
+              FILE=$(echo "$test" | jq -r '.location.file // "unknown-file"')
+              BROWSER=$(echo "$test" | jq -r '.results[-1].projectName // "unknown-browser"')
+            
+              # 👉 Tìm đường dẫn video tương ứng nếu có
+              VIDEO_PATH=$(echo "$test" | jq -r '.results[-1].attachments[]? | select(.name == "video") | .path' | head -n1)
+            
+              SUMMARY="❌ Test Fail: $NAME [$BROWSER]"
+            
+              PAYLOAD=$(jq -n \
+                --arg summary "$SUMMARY" \
+                --arg project "$JIRA_PROJECT_KEY" \
+                --arg name "$NAME" \
+                --arg file "$FILE" \
+                --arg browser "$BROWSER" \
+                --arg repo "${{ github.repository }}" \
+                --arg run_url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" '
+                {
+                  fields: {
+                    project: { key: $project },
+                    summary: $summary,
+                    description: {
+                      type: "doc",
+                      version: 1,
+                      content: [
+                        {
+                          type: "paragraph",
+                          content: [
+                            { type: "text", text: "❌ Chức năng lỗi: " },
+                            { type: "text", text: $name, marks: [{ type: "strong" }] }
+                          ]
+                        },
+                        {
+                          type: "paragraph",
+                          content: [
+                            { type: "text", text: "• Trình duyệt: " },
+                            { type: "text", text: $browser }
+                          ]
+                        },
+                        {
+                          type: "paragraph",
+                          content: [
+                            { type: "text", text: "• File: " },
+                            { type: "text", text: $file, marks: [{ type: "code" }] }
+                          ]
+                        },
+                        {
+                          type: "paragraph",
+                          content: [
+                            { type: "text", text: "• Repo: " },
+                            { type: "text", text: $repo }
+                          ]
+                        },
+                        {
+                          type: "paragraph",
+                          content: [
+                            { type: "text", text: "• CI Run: " },
+                            { type: "text", text: $run_url }
+                          ]
+                        },
+                        {
+                          type: "paragraph",
+                          content: [
+                            { type: "text", text: "👉 Xem thêm HTML report và trace file trong GitHub artifacts." }
+                          ]
+                        }
+                      ]
+                    },
+                    issuetype: { name: "Bug" }
+                  }
+                }
+              ')
+            
+              RESPONSE=$(curl -s -w "%{http_code}" -o response.json -X POST \
+                -u "$JIRA_EMAIL:$JIRA_API_TOKEN" \
+                -H "Content-Type: application/json" \
+                --data "$PAYLOAD" \
+                "$JIRA_BASE_URL/rest/api/3/issue/")
+            
+              if [ "$RESPONSE" = "201" ]; then
+                KEY=$(jq -r '.key' response.json)
+                echo "✅ Đã tạo Jira bug: $KEY"
+            
+                # 🎥 Đính kèm video nếu có
+                if [ -n "$VIDEO_PATH" ] && [ -f "$VIDEO_PATH" ]; then
+                  echo "📎 Đính kèm video: $VIDEO_PATH"
+                  curl -s -X POST \
+                    -u "$JIRA_EMAIL:$JIRA_API_TOKEN" \
+                    -H "X-Atlassian-Token: no-check" \
+                    -F "file=@$VIDEO_PATH" \
+                    "$JIRA_BASE_URL/rest/api/3/issue/$KEY/attachments"
+                else
+                  echo "⚠️ Không tìm thấy video tương ứng cho $NAME"
+                fi
+            
+              else
+                echo "⚠️ Gửi lỗi Jira thất bại (HTTP $RESPONSE):"
+                cat response.json
+              fi
+            done
