@@ -191,7 +191,7 @@ jobs:
                     [.results[]
                       | select(
                           .status == "failed"
-                          and ((.error | type) == "object" or (.error | type) == "string")
+                          and ((.error | type) == "object" or (.error | type) == "string" or (.error | type) == "number")
                       )] | first
                   ),
                   attachments: (
@@ -209,15 +209,20 @@ jobs:
             items: (.[].tests | map({
               browser: .project,
               error: (
-                if (.result.error | type) == "object" and (.result.error.message | type) == "string"
-                then .result.error.message
-                else (.result.error | tostring)
+                if (.result // null | type) == "object" then
+                  if (.result.error | type) == "object" and (.result.error.message | type) == "string"
+                  then .result.error.message
+                  elif (.result.error | type) == "string" or (.result.error | type) == "number"
+                  then (.result.error | tostring)
+                  else "Không có nội dung lỗi"
+                  end
+                else "Không có kết quả"
                 end
               ),
-              retry: .result.retry,
-              attachments: .attachments
+              retry: (.result.retry // 0),
+              attachments: (.attachments // [])
             }))
-          }) | unique_by(.title + "-" + .file)' | jq -c '.[]' | while read -r test; do
+          }) | unique_by(.title + \"-\" + .file)' | jq -c '.[]' | while read -r test; do
 
             TITLE=$(echo "$test" | jq -r '.title')
             FILE=$(echo "$test" | jq -r '.file')
@@ -226,7 +231,7 @@ jobs:
               .items | map(
                 "• Browser: \(.browser)\n  Retry: \(.retry)\n  Error: \(.error)\n  Artifacts:\n" +
                 (if (.attachments | length > 0) then
-                  (.attachments | map("    - \(. | sub("^"; "📎 ")) | join("\n"))
+                  (.attachments | map("    - \(. | sub(\"^\"; \"📎 \"))") | join("\n"))
                 else
                   "    - (No attachments found)"
                 end)
@@ -298,4 +303,5 @@ jobs:
               cat response.json
             fi
           done
+
 
