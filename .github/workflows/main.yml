@@ -177,16 +177,16 @@ jobs:
               exit 0
             fi
             
-            # ✅ Chỉ lấy lần chạy cuối cùng nếu bị fail (tránh trùng khi retry)
+            # ✅ Lấy lần chạy cuối (sau retry), lấy projectName từ test, không bị trùng
             TESTS=$(jq -c '
               .suites[]?.suites[]?.specs[]? as $spec |
               $spec.tests[]? as $test |
               ($test.results | last) as $result |
               select($result.status == "failed") |
               {
-                name: $test.title,
+                name: ($test.title | join(" › ")),
                 file: $spec.file,
-                browser: $result.projectName,
+                browser: ($test.projectName // "unknown-browser"),
                 video: ($result.attachments[]? | select(.name == "video") | .path)
               }
             ' "$REPORT_PATH")
