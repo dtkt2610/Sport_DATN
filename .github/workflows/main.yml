@@ -171,131 +171,137 @@ jobs:
           JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
           JIRA_PROJECT_KEY: ${{ secrets.JIRA_PROJECT_KEY }}
         run: |
-            REPORT_PATH="./report.json"
-            if [ ! -f "$REPORT_PATH" ]; then
-              echo "❌ Không tìm thấy report.json. Bỏ qua gửi Jira."
-              exit 0
-            fi
-            
-            TESTS=$(jq -c '
-              .suites[]?.suites[]?.specs[]? as $spec |
-              $spec.tests[]? as $test |
-              ($test.results // [] | last) as $result |
-              select($result.status == "failed") |
+          REPORT_PATH="./report.json"
+          if [ ! -f "$REPORT_PATH" ]; then
+            echo "❌ Không tìm thấy report.json. Bỏ qua gửi Jira."
+            exit 0
+          fi
+      
+          echo "🔍 Đang phân tích các test case failed..."
+      
+          jq -c '
+            .suites[]?.suites[]?.specs[]? as $spec |
+            $spec.tests[]? as $test |
+            select(($test.results | type) == "array") |
+            ($test.results | reverse | .[]? | select(.status == "failed")) as $result |
+            {
+              title: $test.title,
+              file: $spec.file,
+              browser: ($test.projectName // "unknown-browser"),
+              retry: ($result.retry // 0),
+              video: (
+                ($result.attachments // [])
+                | map(select(.name == "video") | .path)
+                | if length > 0 then .[0] else empty end
+              )
+            }
+          ' "$REPORT_PATH" | while IFS= read -r test; do
+      
+            NAME=$(echo "$test" | jq -r '.title // "unknown-test"')
+            FILE=$(echo "$test" | jq -r '.file // "unknown-file"')
+            BROWSER=$(echo "$test" | jq -r '.browser // "unknown-browser"')
+            RETRY=$(echo "$test" | jq -r '.retry // 0')
+            VIDEO_PATH=$(echo "$test" | jq -r '.video // empty')
+      
+            SUMMARY="❌ Test Fail: $NAME [$BROWSER]"
+      
+            PAYLOAD=$(jq -n \
+              --arg summary "$SUMMARY" \
+              --arg project "$JIRA_PROJECT_KEY" \
+              --arg name "$NAME" \
+              --arg file "$FILE" \
+              --arg browser "$BROWSER" \
+              --arg retry "$RETRY" \
+              --arg repo "${{ github.repository }}" \
+              --arg run_url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" '
               {
-                name: ($test.title | join(" › ")),
-                file: $spec.file,
-                browser: ($test.projectName // "unknown-browser"),
-                video: (
-                  ($result.attachments? // []) 
-                  | map(select(.name == "video" and .path != null)) 
-                  | .[0].path // empty
-                )
-              }
-            ' "$REPORT_PATH")
-            
-            if [ -z "$TESTS" ]; then
-              echo "✅ Không có lỗi nào cần gửi Jira."
-              exit 0
-            fi
-            
-            echo "$TESTS" | while IFS= read -r test; do
-              NAME=$(echo "$test" | jq -r '.name // "unknown-test"')
-              FILE=$(echo "$test" | jq -r '.file // "unknown-file"')
-              BROWSER=$(echo "$test" | jq -r '.browser // "unknown-browser"')
-              VIDEO_PATH=$(echo "$test" | jq -r '.video // empty')
-            
-              SUMMARY="❌ Test Fail: $NAME [$BROWSER]"
-            
-              PAYLOAD=$(jq -n \
-                --arg summary "$SUMMARY" \
-                --arg project "$JIRA_PROJECT_KEY" \
-                --arg name "$NAME" \
-                --arg file "$FILE" \
-                --arg browser "$BROWSER" \
-                --arg repo "${{ github.repository }}" \
-                --arg run_url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" '
-                {
-                  fields: {
-                    project: { key: $project },
-                    summary: $summary,
-                    description: {
-                      type: "doc",
-                      version: 1,
-                      content: [
-                        {
-                          type: "paragraph",
-                          content: [
-                            { type: "text", text: "❌ Chức năng lỗi: " },
-                            { type: "text", text: $name, marks: [{ type: "strong" }] }
-                          ]
-                        },
-                        {
-                          type: "paragraph",
-                          content: [
-                            { type: "text", text: "• Trình duyệt: " },
-                            { type: "text", text: $browser }
-                          ]
-                        },
-                        {
-                          type: "paragraph",
-                          content: [
-                            { type: "text", text: "• File: " },
-                            { type: "text", text: $file, marks: [{ type: "code" }] }
-                          ]
-                        },
-                        {
-                          type: "paragraph",
-                          content: [
-                            { type: "text", text: "• Repo: " },
-                            { type: "text", text: $repo }
-                          ]
-                        },
-                        {
-                          type: "paragraph",
-                          content: [
-                            { type: "text", text: "• CI Run: " },
-                            { type: "text", text: $run_url }
-                          ]
-                        },
-                        {
-                          type: "paragraph",
-                          content: [
-                            { type: "text", text: "👉 Xem thêm HTML report và trace file trong GitHub artifacts." }
-                          ]
-                        }
-                      ]
-                    },
-                    issuetype: { name: "Bug" }
-                  }
+                fields: {
+                  project: { key: $project },
+                  summary: $summary,
+                  description: {
+                    type: "doc",
+                    version: 1,
+                    content: [
+                      {
+                        type: "paragraph",
+                        content: [
+                          { type: "text", text: "❌ Chức năng lỗi: " },
+                          { type: "text", text: $name, marks: [{ type: "strong" }] }
+                        ]
+                      },
+                      {
+                        type: "paragraph",
+                        content: [
+                          { type: "text", text: "• Trình duyệt: " },
+                          { type: "text", text: $browser }
+                        ]
+                      },
+                      {
+                        type: "paragraph",
+                        content: [
+                          { type: "text", text: "• Retry lần: " },
+                          { type: "text", text: $retry }
+                        ]
+                      },
+                      {
+                        type: "paragraph",
+                        content: [
+                          { type: "text", text: "• File: " },
+                          { type: "text", text: $file, marks: [{ type: "code" }] }
+                        ]
+                      },
+                      {
+                        type: "paragraph",
+                        content: [
+                          { type: "text", text: "• Repo: " },
+                          { type: "text", text: $repo }
+                        ]
+                      },
+                      {
+                        type: "paragraph",
+                        content: [
+                          { type: "text", text: "• CI Run: " },
+                          { type: "text", text: $run_url }
+                        ]
+                      },
+                      {
+                        type: "paragraph",
+                        content: [
+                          { type: "text", text: "👉 Xem thêm video hoặc HTML report trong GitHub Artifacts." }
+                        ]
+                      }
+                    ]
+                  },
+                  issuetype: { name: "Bug" }
                 }
-              ')
-            
-              RESPONSE=$(curl -s -w "%{http_code}" -o response.json -X POST \
-                -u "$JIRA_EMAIL:$JIRA_API_TOKEN" \
-                -H "Content-Type: application/json" \
-                --data "$PAYLOAD" \
-                "$JIRA_BASE_URL/rest/api/3/issue/")
-            
-              if [ "$RESPONSE" = "201" ]; then
-                KEY=$(jq -r '.key' response.json)
-                echo "✅ Đã tạo Jira bug: $KEY"
-            
-                # 📎 Đính kèm video nếu có
-                if [ -n "$VIDEO_PATH" ] && [ -f "$VIDEO_PATH" ]; then
-                  echo "📎 Đính kèm video: $VIDEO_PATH"
-                  curl -s -X POST \
-                    -u "$JIRA_EMAIL:$JIRA_API_TOKEN" \
-                    -H "X-Atlassian-Token: no-check" \
-                    -F "file=@$VIDEO_PATH" \
-                    "$JIRA_BASE_URL/rest/api/3/issue/$KEY/attachments"
-                else
-                  echo "⚠️ Không tìm thấy video cho: $NAME"
-                fi
-            
+              }
+            ')
+      
+            RESPONSE=$(curl -s -w "%{http_code}" -o response.json -X POST \
+              -u "$JIRA_EMAIL:$JIRA_API_TOKEN" \
+              -H "Content-Type: application/json" \
+              --data "$PAYLOAD" \
+              "$JIRA_BASE_URL/rest/api/3/issue/")
+      
+            if [ "$RESPONSE" = "201" ]; then
+              KEY=$(jq -r '.key' response.json)
+              echo "✅ Đã tạo Jira bug: $KEY"
+      
+              if [ -n "$VIDEO_PATH" ] && [ -f "$VIDEO_PATH" ]; then
+                echo "📎 Đính kèm video: $VIDEO_PATH"
+                curl -s -X POST \
+                  -u "$JIRA_EMAIL:$JIRA_API_TOKEN" \
+                  -H "X-Atlassian-Token: no-check" \
+                  -F "file=@$VIDEO_PATH" \
+                  "$JIRA_BASE_URL/rest/api/3/issue/$KEY/attachments"
               else
-                echo "⚠️ Gửi lỗi Jira thất bại (HTTP $RESPONSE):"
-                cat response.json
+                echo "⚠️ Không tìm thấy video cho: $NAME"
               fi
-            done
+      
+            else
+              echo "⚠️ Gửi lỗi Jira thất bại (HTTP $RESPONSE):"
+              cat response.json
+            fi
+          done
+
 
