@@ -177,7 +177,7 @@ jobs:
             exit 0
           fi
 
-          echo "🔍 Đang phân tích các lỗi failed test..."
+          CI_LINK=$(jq -r '.config.metadata.ci.buildHref // empty' "$REPORT_PATH")
 
           jq -c '
             .suites[] | .suites[]? | .specs[]? |
@@ -191,9 +191,14 @@ jobs:
                     [.results[]
                       | select(
                           .status == "failed"
-                          and (.error | type == "object")
-                          and (.error.message | type == "string")
+                          and ((.error | type) == "object" or (.error | type) == "string")
                       )] | first
+                  ),
+                  attachments: (
+                    [.results[]
+                      | select(.status == "failed")
+                      | .attachments[]?.path
+                    ]
                   )
                 }] | map(select(.result != null))
               )
@@ -201,25 +206,31 @@ jobs:
           ' "$REPORT_PATH" | jq -s '.' | jq 'map({
             title: .[0].title,
             file: .[0].file,
-            errors: (.[].tests | map({
+            items: (.[].tests | map({
               browser: .project,
-              error: .result.error,
-              retry: .result.retry
+              error: (
+                if (.result.error | type) == "object" and (.result.error.message | type) == "string"
+                then .result.error.message
+                else (.result.error | tostring)
+                end
+              ),
+              retry: .result.retry,
+              attachments: .attachments
             }))
           }) | unique_by(.title + "-" + .file)' | jq -c '.[]' | while read -r test; do
 
             TITLE=$(echo "$test" | jq -r '.title')
             FILE=$(echo "$test" | jq -r '.file')
 
-            ERRORS=$(echo "$test" | jq -r '
-              .errors | map(
-                "• Browser: \(.browser)\n  Retry: \(.retry)\n  Error: \(
-                  if (.error | type) == "object" and (.error.message | type) == "string"
-                  then .error.message
-                  else (.error | tostring)
-                  end
-                )"
-              ) | join("\n\n")
+            ERRORS=$(echo "$test" | jq -r --arg CI_LINK "$CI_LINK" '
+              .items | map(
+                "• Browser: \(.browser)\n  Retry: \(.retry)\n  Error: \(.error)\n  Artifacts:\n" +
+                (if (.attachments | length > 0) then
+                  (.attachments | map("    - \(. | sub("^"; "📎 ")) | join("\n"))
+                else
+                  "    - (No attachments found)"
+                end)
+              ) | join("\n\n") + (if $CI_LINK != "" then "\n\n🔗 CI: " + $CI_LINK else "" end)
             ')
 
             SUMMARY="❌ Test Fail: $TITLE"
@@ -287,3 +298,4 @@ jobs:
               cat response.json
             fi
           done
+
