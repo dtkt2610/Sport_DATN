@@ -187,9 +187,14 @@ jobs:
                 name: ($test.title | join(" › ")),
                 file: $spec.file,
                 browser: ($test.projectName // "unknown-browser"),
-                video: (($result.attachments // []) | map(select(.name == "video")) | .[0].path // empty)
+                video: (
+                  ($result.attachments // []) 
+                  | map(select(.name == "video")) 
+                  | if length > 0 then .[0].path else empty end
+                )
               }
             ' "$REPORT_PATH")
+
             
             if [ -z "$TESTS" ]; then
               echo "✅ Không có lỗi nào cần gửi Jira."
