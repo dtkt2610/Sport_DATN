@@ -187,7 +187,7 @@ jobs:
                 name: ($test.title | join(" › ")),
                 file: $spec.file,
                 browser: ($test.projectName // "unknown-browser"),
-                video: ($result.attachments[]? | select(.name == "video") | .path)
+                video: (($result.attachments // []) | map(select(.name == "video")) | .[0].path // empty)
               }
             ' "$REPORT_PATH")
             
