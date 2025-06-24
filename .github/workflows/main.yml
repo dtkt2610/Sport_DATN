@@ -306,5 +306,3 @@ jobs:
               cat response.json
             fi
           done
-
-
