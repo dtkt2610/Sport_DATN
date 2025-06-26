@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { ColorsPage } from "../pages/colors-page";
-import { ColorData, ColorTestCase } from "../utils/color-data";
+import { ColorData, ColorTestCase } from "../data/color-data";
 import { count } from "console";
 import { colorMap } from "../shared/constants";
 

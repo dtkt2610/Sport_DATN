@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { PriceRangePage } from "../pages/price-range-page";
-import { priceRangeData } from "../utils/price-range-data";
+import { priceRangeData } from "../data/price-range-data";
 
 const TIMEOUT = process.env.TEST_TIMEOUT ? parseInt(process.env.TEST_TIMEOUT) : 15000;
 const FULL_MIN = 0;

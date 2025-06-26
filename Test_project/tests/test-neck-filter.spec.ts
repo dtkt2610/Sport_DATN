@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { NeckPage } from "../pages/neck-page";
-import { NeckData } from "../utils/neck-data";
+import { NeckData } from "../data/neck-data";
 
 test.describe("Lọc sản phẩm theo cổ áo", () => {
   for (const testCase of NeckData) {

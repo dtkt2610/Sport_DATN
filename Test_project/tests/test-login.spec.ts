@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { LoginPage} from "../pages/login-page";
-import { invalidUser, validUser } from "../utils/login-data"; 
+import { LoginPage } from "../pages/login-page";
+import { invalidUser, validUser } from "../data/login-data";
 
 test.describe("Kiểm thử đăng nhập", () => {
   test("Đăng nhập thành công", async ({ page }) => {

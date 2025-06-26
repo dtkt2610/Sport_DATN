@@ -1,8 +1,8 @@
 import { test, expect } from "@playwright/test";
 import { ProductDetailPage } from "../pages/product-details-page";
-import { AddToCartData } from "../utils/add-to-card-data";
+import { AddToCartData } from "../data/add-to-card-data";
 import { LoginPage } from "../pages/login-page";
-import { validUser } from "../utils/login-data";
+import { validUser } from "../data/login-data";
 
 test.describe('Thêm vào giỏ hàng', () => {
   for (const tc of AddToCartData) {

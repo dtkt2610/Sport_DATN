@@ -1,9 +1,9 @@
 import { test } from '@playwright/test';
 import { SanphamPage } from '../pages/sanpham-page';
-import { sanphamSearchData } from '../utils/search-input-data';
+import { sanphamSearchData } from '../data/search-input-data';
 
 test.describe('Kiểm thử chức năng tìm kiếm sản phẩm', () => {
-    sanphamSearchData.forEach(({ id, description, keyword})=>{
+    sanphamSearchData.forEach(({ id, description, keyword }) => {
         test(`${id} - ${description}`, async ({ page }) => {
             const sanphamPage = new SanphamPage(page);
             await sanphamPage.navigateToHome();
@@ -13,5 +13,5 @@ test.describe('Kiểm thử chức năng tìm kiếm sản phẩm', () => {
 
             await page.close();
         });
-    }); 
+    });
 });

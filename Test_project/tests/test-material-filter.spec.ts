@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { MaterialPage } from "../pages/material-page";
-import { MaterialData, MaterialFilterTestCase } from "../utils/material-data";
+import { MaterialData, MaterialFilterTestCase } from "../data/material-data";
 
 test.describe("Lọc sản phẩm theo chất liệu", () => {
     for (const testCase of MaterialData) {

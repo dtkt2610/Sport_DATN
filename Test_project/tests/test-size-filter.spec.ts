@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { SizePage } from '../pages/size-page';
-import { SizeFilterTestCase, sizeFilterData } from '../utils/size-data';
+import { SizeFilterTestCase, sizeFilterData } from '../data/size-data';
 
 test.describe('Lọc sản phẩm theo kích cỡ', () => {
 

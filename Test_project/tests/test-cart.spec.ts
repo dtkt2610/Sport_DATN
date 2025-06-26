@@ -2,9 +2,9 @@ import { test, expect } from "@playwright/test";
 import { LoginPage } from "../pages/login-page";
 import { ProductDetailPage } from "../pages/product-details-page";
 import { CartPage } from "../pages/cart-page";
-import { CartTestData } from "../utils/cart-data";
+import { CartTestData } from "../data/cart-data";
 import { colorMap } from "../shared/constants";
-import { validUser } from "../utils/login-data";
+import { validUser } from "../data/login-data";
 
 test.describe("Kiểm tra giỏ hàng", () => {
     test.beforeEach(async ({ page }) => {

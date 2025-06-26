@@ -207,7 +207,9 @@ jobs:
             VIDEO_PATH=$(echo "$test" | jq -r '.video // empty')
       
             SUMMARY="❌ Test Fail: $NAME [$BROWSER]"
-      
+            # Gán accountId người xử lý
+            ASSIGNEE_ID="712020:369b615b-0f46-467b-9489-72cce019993b"
+
             PAYLOAD=$(jq -n \
               --arg summary "$SUMMARY" \
               --arg project "$JIRA_PROJECT_KEY" \
@@ -216,7 +218,8 @@ jobs:
               --arg browser "$BROWSER" \
               --arg retry "$RETRY" \
               --arg repo "${{ github.repository }}" \
-              --arg run_url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" '
+              --arg run_url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"\
+              --arg assigneeId "$ASSIGNEE_ID" \ '
               {
                 fields: {
                   project: { key: $project },
@@ -276,6 +279,7 @@ jobs:
                     ]
                   },
                   issuetype: { name: "Bug" }
+                  assignee: { id: $assigneeId }
                 }
               }
             ')
