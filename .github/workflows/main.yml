@@ -278,7 +278,7 @@ jobs:
                       }
                     ]
                   },
-                  issuetype: { name: "Bug" }
+                  issuetype: { name: "Bug" },
                   assignee: { id: $assigneeId }
                 }
               }
