@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import { ProductDetailPage } from "../pages/product-details-page";
 import { AddToCartData } from "../data/add-to-card-data";
 import { LoginPage } from "../pages/login-page";
-import { validUser } from "../data/login-data";
+import { validUser } from "../shared/login_success";
 
 test.describe('Thêm vào giỏ hàng', () => {
   for (const tc of AddToCartData) {

@@ -4,7 +4,7 @@ import { ProductDetailPage } from "../pages/product-details-page";
 import { CartPage } from "../pages/cart-page";
 import { CartTestData } from "../data/cart-data";
 import { colorMap } from "../shared/constants";
-import { validUser } from "../data/login-data";
+import { validUser } from "../shared/login_success";
 
 test.describe("Kiểm tra giỏ hàng", () => {
     test.beforeEach(async ({ page }) => {
