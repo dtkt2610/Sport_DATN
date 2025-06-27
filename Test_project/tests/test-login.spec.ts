@@ -1,26 +1,32 @@
 import { expect, test } from "@playwright/test";
 import { LoginPage } from "../pages/login-page";
-import { invalidUser, validUser } from "../data/login-data";
+import { LoginData, LoginTestCase } from "../data/login-data";
 
-test.describe("Kiểm thử đăng nhập", () => {
-  test("Đăng nhập thành công", async ({ page }) => {
-    const loginPage = new LoginPage(page);
-    await loginPage.navigateToHome();
-    await loginPage.openLoginPageFromDropdown();
-    await loginPage.Login(validUser.email, validUser.password);
-    const toast = page.locator('.Toastify__toast--success', { hasText: 'Đăng nhập thành công' });
-    await toast.waitFor({ state: 'visible', timeout: 10000 });
-    await expect(toast).toBeVisible();
+test.describe("Kiểm thử chức năng Đăng nhập", () => {
+  LoginData.forEach((testCase: LoginTestCase) => {
+    test(`${testCase.id} - ${testCase.description}`, async ({ page }) => {
+      const loginPage = new LoginPage(page);
+      await loginPage.navigateToHome();
+      await loginPage.openLoginPageFromDropdown();
 
-    await page.close();
-  });
+      if (testCase.id === 'LOGIN01') {
+        // ✅ Kiểm tra hiển thị trang đăng nhập
+        await expect(loginPage.loginContainer).toBeVisible({ timeout: 5000 });
+      } else {
+        await loginPage.Login(testCase.email, testCase.password);
 
-  test("Đăng nhập thất bại", async ({ page }) => {
-    const loginPage = new LoginPage(page);
-    await loginPage.navigateToHome();
-    await loginPage.openLoginPageFromDropdown();
-    await loginPage.Login(invalidUser.email, invalidUser.password);
-    await expect(page.getByText("Sai tài khoản hoặc mật khẩu")).toBeVisible({ timeout: 5000 });
-    await page.close();
+        if (testCase.expected === 'Đăng nhập thành công') {
+          const toast = page.locator('.Toastify__toast--success', {
+            hasText: 'Đăng nhập thành công'
+          });
+          await toast.waitFor({ state: 'visible', timeout: 10000 });
+          await expect(toast).toBeVisible();
+        } else if (testCase.expected) {
+          await expect(page.getByText(testCase.expected)).toBeVisible({ timeout: 5000 });
+        }
+      }
+
+      await page.close();
+    });
   });
 });

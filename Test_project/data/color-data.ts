@@ -1,5 +1,3 @@
-
-
 export interface ColorTestCase {
   id: string;
   description: string;
