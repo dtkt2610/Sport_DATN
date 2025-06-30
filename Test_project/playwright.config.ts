@@ -8,7 +8,7 @@ export default defineConfig({
 
   // ✅ Cấu hình reporter HTML phù hợp cho CI
   reporter: [
-    ['json', { outputFile: 'report.json' }],  // Tạo JSON report
+    ['json', { outputFile: 'report.json' }],
     ['html', {
       outputFolder: 'test-reports',
       open: process.env.CI ? 'never' : 'always'  // ❗ Không mở khi chạy trên GitHub Actions
